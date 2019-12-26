@@ -1,0 +1,47 @@
+# Cross toolchain variables
+# If these are not in your path, you can make them absolute.
+XT_PRG_PREFIX = arm-none-eabi-
+CC = $(XT_PRG_PREFIX)gcc
+LD = $(XT_PRG_PREFIX)ld
+
+# uARM-related paths
+UARM_DIR = ./uarm
+INCLUDE_DIR = ./src/include
+
+# Compiler options
+CFLAGS_LANG = 
+CFLAGS_UARM = -mcpu=arm7tdmi -DTARGET_UARM=1
+CFLAGS = $(CFLAGS_LANG) $(CFLAGS_UARM) -I$(UARM_DIR) -I$(UARM_DIR)/uarm -I$(INCLUDE_DIR) -DUARM=1 -Wall -O0
+
+# Linker options
+LDFLAGS = -G 0 -nostdlib -T $(UARM_DIR)/elf32ltsarm.h.uarmcore.x
+
+# Add the location of crt*.S to the search path
+VPATH = $(UARM_DIR)
+
+#Build Path
+BUILD_DIR = build/uarm
+
+.PHONY : all clean
+
+all : dir $(BUILD_DIR)/kernel.core.uarm
+
+dir :
+	mkdir -p $(BUILD_DIR)
+
+$(BUILD_DIR)/kernel.core.umps : $(BUILD_DIR)/kernel
+	elf2uarm -k $<
+
+$(BUILD_DIR)/kernel : $(BUILD_DIR)/main.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o
+	$(LD) -o $@ $^ $(LDFLAGS)
+
+clean:
+	-rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/kernel $(BUILD_DIR)/kernel.*.uarm
+
+# Patter rule for c source files
+$(BUILD_DIR)/%.o : src/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Pattern rule for assembly modules
+$(BUILD_DIR)/%.o : %.s
+	$(CC) $(CFLAGS) -c -o $@ $<

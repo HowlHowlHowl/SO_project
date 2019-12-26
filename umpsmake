@@ -1,0 +1,47 @@
+# Cross toolchain variables
+# If these are not in your path, you can make them absolute.
+XT_PRG_PREFIX = mipsel-linux-gnu-
+CC = $(XT_PRG_PREFIX)gcc
+LD = $(XT_PRG_PREFIX)ld
+
+# uMPS2-related paths
+UMPS2_DIR = ./umps
+INCLUDE_DIR = ./src/include
+
+# Compiler options
+CFLAGS_LANG = -ffreestanding -ansi -DTARGET_UMPS=1
+CFLAGS_MIPS = -mips1 -mabi=32 -mno-gpopt -G 0 -mno-abicalls -fno-pic -mfp32
+CFLAGS = $(CFLAGS_LANG) $(CFLAGS_MIPS) -I$(UMPS2_DIR) -I$(INCLUDE_DIR) -DUMPS=1 -Wall -O0
+
+# Linker options
+LDFLAGS = -G 0 -nostdlib -T $(UMPS2_DIR)/umpscore.ldscript
+
+# Add the location of crt*.S to the search path
+VPATH = $(UMPS2_DIR)
+
+#Build Path
+BUILD_DIR = build/umps
+
+.PHONY : all clean
+
+all : dir $(BUILD_DIR)/kernel.core.umps
+
+dir :
+	mkdir -p $(BUILD_DIR)
+
+$(BUILD_DIR)/kernel.core.umps : $(BUILD_DIR)/kernel
+	umps2-elf2umps -k $<
+
+$(BUILD_DIR)/kernel : $(BUILD_DIR)/main.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libumps.o
+	$(LD) -o $@ $^ $(LDFLAGS)
+
+clean :
+	-rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/kernel $(BUILD_DIR)/kernel.*.umps
+
+# Patter rule for c source files
+$(BUILD_DIR)/%.o : src/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Pattern rule for assembly modules
+$(BUILD_DIR)/%.o : %.S
+	$(CC) $(CFLAGS) -c -o $@ $<
