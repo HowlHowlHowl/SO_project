@@ -6,7 +6,7 @@ LD = $(XT_PRG_PREFIX)ld
 
 # uMPS2-related paths
 UMPS2_DIR = ./umps
-INCLUDE_DIR = ./src/include
+INCLUDE_DIR = ./src/
 
 # Compiler options
 CFLAGS_LANG = -ffreestanding -ansi -DTARGET_UMPS=1

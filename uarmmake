@@ -6,7 +6,7 @@ LD = $(XT_PRG_PREFIX)ld
 
 # uARM-related paths
 UARM_DIR = ./uarm
-INCLUDE_DIR = ./src/include
+INCLUDE_DIR = ./src/
 
 # Compiler options
 CFLAGS_LANG = 
@@ -29,7 +29,7 @@ all : dir $(BUILD_DIR)/kernel.core.uarm
 dir :
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/kernel.core.umps : $(BUILD_DIR)/kernel
+$(BUILD_DIR)/kernel.core.uarm : $(BUILD_DIR)/kernel
 	elf2uarm -k $<
 
 $(BUILD_DIR)/kernel : $(BUILD_DIR)/main.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o
