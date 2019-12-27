@@ -32,7 +32,7 @@ dir :
 $(BUILD_DIR)/kernel.core.uarm : $(BUILD_DIR)/kernel
 	elf2uarm -k $<
 
-$(BUILD_DIR)/kernel : $(BUILD_DIR)/main.o $(BUILD_DIR)/printer.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o
+$(BUILD_DIR)/kernel : $(BUILD_DIR)/main.o $(BUILD_DIR)/printer.o $(BUILD_DIR)/term_read.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 clean:
