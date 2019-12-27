@@ -32,7 +32,7 @@ dir :
 $(BUILD_DIR)/kernel.core.umps : $(BUILD_DIR)/kernel
 	umps2-elf2umps -k $<
 
-$(BUILD_DIR)/kernel : $(BUILD_DIR)/main.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libumps.o
+$(BUILD_DIR)/kernel : $(BUILD_DIR)/main.o $(BUILD_DIR)/printer.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libumps.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 clean :
