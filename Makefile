@@ -11,6 +11,9 @@ umps2:
 uarm:
 	$(MAKE) -f uarmmake
 
+uarm-new:
+	$(MAKE) -f uarmmake new
+
 clean:
 	$(MAKE) -f uarmmake clean
 	$(MAKE) -f umpsmake clean

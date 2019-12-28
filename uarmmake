@@ -22,9 +22,11 @@ VPATH = $(UARM_DIR)
 #Build Path
 BUILD_DIR = build/uarm
 
-.PHONY : all clean
+.PHONY : all new clean
 
 all : dir $(BUILD_DIR)/kernel.core.uarm
+
+new : dir $(BUILD_DIR)/kernel
 
 dir :
 	mkdir -p $(BUILD_DIR)
