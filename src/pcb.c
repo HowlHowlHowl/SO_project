@@ -69,7 +69,7 @@ void insertProcQ(struct list_head *head, pcb_t *p)
 {
     if(list_empty(head))
     {
-        list_add(head, &p->p_next);
+        list_add(&p->p_next, head);
     }
     else
     {
