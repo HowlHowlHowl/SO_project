@@ -1,6 +1,5 @@
 #ifndef ASL_H
 #define ASL_H
-
 #include <types_bikaya.h>
 
 /* ASL handling functions */
