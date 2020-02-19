@@ -33,16 +33,18 @@ void AslAdd(semd_t* newOne) {
 /* Restituisce il semd associato alla chiave data in input */
 semd_t* getSemd(int *key) {
 
-	/*Scorre la lista di semd utilizzati finchè non c'è una corrispondenza, se non si trova e il ciclo for termina ritorna NULL*/
-	struct list_head* tmp = &ASL; 
-	semd_t* pos;
-	list_for_each_entry(pos,tmp,s_next) 
+	/*Scorre la lista di semd utilizzati finchè non c'è una corrispondenza, se non si trova e il ciclo for termina oppure la key in input e nulla ritorna NULL*/
+	if (key)
 	{
-		if(pos->s_key==key) return pos;	
+		struct list_head* tmp = &ASL; 
+		semd_t* pos;
+		list_for_each_entry(pos,tmp,s_next) 
+		{
+			if(pos->s_key==key) return pos;	
+		}
 	}
 	return NULL;
 }
-
 /* Prende, se disponibile, un semd dalla lista di quelli liberi e lo restituisce come output dopo aver inizializzato i campi*/
 semd_t *allocSemd (void) {
 
@@ -60,15 +62,15 @@ semd_t *allocSemd (void) {
 		semd_t* result = container_of(tmp,semd_t,s_next);
 		INIT_LIST_HEAD(&result->s_next);
 		INIT_LIST_HEAD(&result->s_procQ);
-		result->s_key=0;
+		result->s_key=NULL;
 		return(result);
 	}
 }
 
 
-/*Restituisce un semd alla lista dei semd liberi*/
+/*Restituisce un semd dalla ASL alla lista dei semd liberi*/
 void freeSemd(semd_t *toDel) {
-
+	toDel->s_key=NULL;
 	list_del(&toDel->s_next);
 	list_add(&toDel->s_next,&semdFreeList);
 }
@@ -77,9 +79,10 @@ void freeSemd(semd_t *toDel) {
 int insertBlocked(int *key, pcb_t* p) {
 
 	semd_t* tmp=getSemd(key);
-	/*Esistenza di un semd con chiave == key, se esite aggiungo il pcb altrimenti creo un nuovo semd*/
+	/*Esistenza di un semd con chiave == key all'interno della ASL, se esite aggiungo il pcb altrimenti creo un nuovo semd*/
 	if(tmp!=NULL) 
-	{
+	{	
+		p->p_semkey=key;
 		insertProcQ(&tmp->s_procQ, p);
 		return 0;
 	}
@@ -93,7 +96,8 @@ int insertBlocked(int *key, pcb_t* p) {
 			return 1;
 		} 
 		else 
-		{
+		{	
+			p->p_semkey=key;
 			newSemd->s_key=key;
 			mkEmptyProcQ(&newSemd->s_procQ);
 			insertProcQ(&newSemd->s_procQ,p);
@@ -119,15 +123,17 @@ pcb_t* removeBlocked(int *key) {
 		if (emptyProcQ(&tmp->s_procQ)) 
 		{
 			freeSemd(tmp);
-			return result;
 		}
-		else 
-		{
-			return result;
-		}
+		result->p_semkey=NULL;
+		return result;
 	}
 }
 
+/*Restituire e Rimuovere un pcb specifico dalla lista.
+	Ricerca di un semd con key_s==p->p_semkey, se non esiste ritorno NULL
+	Estrazione del pcb in questine. Con outProcQ verifico se esiste un altro 
+	elemento nella semd corrispondente se non esiste libero la semd
+*/
 pcb_t* outBlocked(pcb_t *p) {
 
 	semd_t* tmp = getSemd(p->p_semkey);
@@ -138,17 +144,17 @@ pcb_t* outBlocked(pcb_t *p) {
 	else  
 	{
 		pcb_t* result = outProcQ(&tmp->s_procQ,p);
-		if (list_empty(&tmp->s_procQ))
+		
+		if (headProcQ(&tmp->s_procQ))
 		{
-			freeSemd(tmp);
-			return result;
+			freeSemd(tmp);	
 		}
-		else 
-		{
-			return result;
-		}
+		result->p_semkey=NULL;
+		return result;
 	}
 }
+
+/*Esistenza di un semd con chiave == key all'interno dell'ASL, se non esiste ritorna NULL, per ritornare l'elemento di testa della lista dei pbc chiama la funzione headProcQ (file 'pbc.c') */
 pcb_t* headBlocked(int *key) {
 
 	semd_t* tmp = getSemd(key);
@@ -162,18 +168,16 @@ pcb_t* headBlocked(int *key) {
 		return result;
 	}
 }
+
+/*Rimuove il pcb p iniziale e procede iterando su tutti i figli di p il procedimento ricorsivo*/
 void outChildBlocked(pcb_t *p) {
-
-	semd_t* tmp= getSemd(p->p_semkey);
-	if(tmp!=NULL)
+	
+	outBlocked(p);
+	pcb_t* pos;
+	list_for_each_entry(pos,&p->p_child,p_sib)
 	{
-		while (!emptyChild(p))
-		{
-			removeChild(p);
-		}
-		outProcQ(&tmp->s_procQ,p);
+		outChildBlocked(pos);
 	}
-
 }
 
 
