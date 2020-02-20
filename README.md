@@ -1,4 +1,4 @@
-# Bikaya - Consegna 0
+# Bikaya - Consegna 1
 Per compilare il sorgente occorre eseguire il comando make nella cartella che contiene questo file README, specificando l'architettura di destinazione come di seguito.
 ```python
 make umps       #per architettura umps 
@@ -8,5 +8,6 @@ make clean      #per rimuovere tutti i file di output
 ```
 I file di output si trovano nelle cartelle ```build/umps```  e ```build/uarm``` che verranno generate opportunamente dall'esecuzione del comando make.
 
-Per eseguire il codice è sufficiente avviare il rispettivo emulatore e impostare nella configurazione un file di output per il device Printer 0 e abilitarlo.
-Il programma legge la prima riga di input dal terminale 0 e ne stampa il contenuto nel file assegnato al device.
+Per eseguire il codice è sufficiente avviare il rispettivo emulatore e aprire il terminale 0.
+Il programma esegue il codice del test ```p1test_bikaya_v0.c``` e stampa l'output al terminale.
+

@@ -1,21 +1,13 @@
 #include "const.h"
 #include "pcb.h"
 
-/* PCB List and table data */
+/* PCB free list e table */
 static struct list_head pcbFreeList;
 static pcb_t pcbFreeTable[MAXPROC];
 
-/* Sets "size" bytes starting from "ptr" to 0 */
-static void zero_memory(void* ptr, unsigned int size)
-{
-    char* p = (char*)ptr;
-    for(unsigned int i = 0; i < size; i++)
-    {
-        p[i] = 0;
-    }
-}
-
 /* PCB free list handling functions */
+
+/* Inizializza la lista libera in modo che contenga tutti i pcb disponibili */
 void initPcbs(void)
 {
     INIT_LIST_HEAD(&pcbFreeList);
@@ -26,11 +18,23 @@ void initPcbs(void)
     }
 }
 
+/* Libera il pcb puntato da p aggiungendolo alla lista libera */
 void freePcb(pcb_t *p)
 {
     list_add(&p->p_next, &pcbFreeList);
 }
 
+/* Mette a 0 size byte a partire da ptr */
+static void zero_memory(void* ptr, unsigned int size)
+{
+    char* p = (char*)ptr;
+    for(unsigned int i = 0; i < size; i++)
+    {
+        p[i] = 0;
+    }
+}
+
+/* Alloca un pcb dalla lista libera se disponibile, altrimenti ritorna NULL*/
 pcb_t *allocPcb(void)
 {
     struct list_head* next = list_next(&pcbFreeList);
@@ -42,7 +46,7 @@ pcb_t *allocPcb(void)
     
     pcb_t* result = container_of(next, pcb_t, p_next);
     
-    //Initialize all fields of result
+    /*Initializza tutti gli elementi del pcb */
     INIT_LIST_HEAD(&result->p_next);
     result->p_parent = NULL;
     INIT_LIST_HEAD(&result->p_child);
@@ -55,16 +59,20 @@ pcb_t *allocPcb(void)
 }
 
 /* PCB queue handling functions */
+
+/*Inizialliza head come coda vuota*/
 void mkEmptyProcQ(struct list_head *head)
 {
     INIT_LIST_HEAD(head);
 }
 
+/*Ritorna non-zero se la coda e' vuota, zero altrimenti*/
 int emptyProcQ(struct list_head *head)
 {
     return list_empty(head);
 }
 
+/*Inserisce p nella coda puntata da head*/
 void insertProcQ(struct list_head *head, pcb_t *p)
 {
     if(list_empty(head))
@@ -73,25 +81,27 @@ void insertProcQ(struct list_head *head, pcb_t *p)
     }
     else
     {
-        /* 
-           Se non troviamo un elemento prima del quale inserire p lo inseriamo alla fine
-           della lista 
-        */
+        /*Se non troviamo un elemento prima del quale inserire p lo inseriamo alla fine
+          della coda  */
         struct list_head* prev = head->prev;
+        
+        /*Scorre la coda alla ricerca di un elemento prima del quale inserire p*/
         pcb_t* it;
         list_for_each_entry(it, head, p_next)
         {
-            if(it->priority <= p->priority)
+            if(p->priority >= it->priority)
             {
                 prev = it->p_next.prev;
                 break;
             }
         }
         
+        /*Inserisce p subito dopo prev */
         list_add(&p->p_next, prev);
     }
 }
 
+/*Ritorna il primo elemento della coda puntata da head, se e' vuota ritorna NULL*/
 pcb_t *headProcQ(struct list_head *head)
 {
     struct list_head* first = list_next(head);
@@ -105,6 +115,7 @@ pcb_t *headProcQ(struct list_head *head)
     }
 }
 
+/*Rimuove e ritorna il primo elemento della coda puntata da head, se e' vuota ritorna NULL*/
 pcb_t *removeProcQ(struct list_head *head)
 {
     struct list_head* first = list_next(head);
@@ -119,6 +130,7 @@ pcb_t *removeProcQ(struct list_head *head)
     }
 }
 
+/*Rimuove e ritorna p dalla coda puntata da head, se non e' presente ritorna NULL*/
 pcb_t *outProcQ(struct list_head *head, pcb_t *p)
 {
     pcb_t* result = NULL;
@@ -138,17 +150,21 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p)
 
 
 /* Tree view functions */
-int emptyChild(pcb_t *this)
+
+/*Ritorna non-zero se p ha figli, zero altrimenti*/
+int emptyChild(pcb_t *p)
 {
-    return list_empty(&this->p_child);
+    return list_empty(&p->p_child);
 }
 
+/*Inserisce p come figlio di prnt*/
 void insertChild(pcb_t *prnt, pcb_t *p)
 {
     list_add_tail(&p->p_sib, &prnt->p_child);
     p->p_parent = prnt;
 }
 
+/*Rimuove e ritorna il primo figlio di p, se p non ha figli ritorna NULL*/
 pcb_t *removeChild(pcb_t *p)
 {
     struct list_head* first_child = list_next(&p->p_child);
@@ -163,11 +179,13 @@ pcb_t *removeChild(pcb_t *p)
     }
 }
 
+/*Rimuove p dai figli del padre, se p non ha padre ritorna NULL*/
 pcb_t *outChild(pcb_t *p)
 {
     if(p->p_parent)
     {
         list_del(&p->p_sib);
+        p->p_parent = 0;
         return p;
     }
     else
