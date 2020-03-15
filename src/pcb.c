@@ -53,6 +53,7 @@ pcb_t *allocPcb(void)
     INIT_LIST_HEAD(&result->p_sib);
     zero_memory(&result->p_s, sizeof(state_t));
     result->priority = 0;
+    result->original_priority = 0;
     result->p_semkey = NULL;
     
     return result;

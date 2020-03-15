@@ -7,7 +7,7 @@
 #define UARM_MACHINE_COMPILING
 #include <uarm/uARMtypes.h>
 #endif
-#include <listx.h>
+#include "listx.h"
 
 typedef unsigned int memaddr;
 
@@ -23,8 +23,10 @@ typedef struct pcb_t {
     /* processor state, etc */
     state_t p_s;
 
-    /* process priority */
+    /* dynamic process priority */
     int priority;
+    /* initial process priority */
+    int original_priority;
 
     /* key of the semaphore on which the process is eventually blocked */
     int *p_semkey;

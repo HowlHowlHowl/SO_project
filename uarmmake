@@ -34,7 +34,7 @@ dir :
 $(BUILD_DIR)/kernel.core.uarm : $(BUILD_DIR)/kernel
 	elf2uarm -k $<
 
-$(BUILD_DIR)/kernel : $(BUILD_DIR)/p1test_bikaya_v0.o $(BUILD_DIR)/pcb.o $(BUILD_DIR)/asl.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o
+$(BUILD_DIR)/kernel : $(BUILD_DIR)/p1.5test_bikaya_v0.o $(BUILD_DIR)/pcb.o $(BUILD_DIR)/asl.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o $(BUILD_DIR)/libdiv.o $(BUILD_DIR)/main.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 clean:
