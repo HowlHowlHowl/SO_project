@@ -32,7 +32,7 @@ dir :
 $(BUILD_DIR)/kernel.core.umps : $(BUILD_DIR)/kernel
 	umps2-elf2umps -k $<
 
-$(BUILD_DIR)/kernel : $(BUILD_DIR)/p1.5test_bikaya_v0.o $(BUILD_DIR)/pcb.o $(BUILD_DIR)/asl.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libumps.o $(BUILD_DIR)/main.o
+$(BUILD_DIR)/kernel : $(BUILD_DIR)/p1.5test_bikaya_v0.o $(BUILD_DIR)/scheduler.o $(BUILD_DIR)/pcb.o $(BUILD_DIR)/asl.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libumps.o $(BUILD_DIR)/main.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 clean :
