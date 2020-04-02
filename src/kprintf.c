@@ -125,8 +125,32 @@ void kprintf(char* fmt, ...)
                     }
                     
                     term_puts(term, b);
-                }
-                break;
+                } break;
+                
+                case 'b':
+                {
+                    unsigned int n = va_arg(va, unsigned int);
+                    for(int i = 31; i >= 0; i--)
+                    {
+                        unsigned int v;
+                        if(i == 0) //shift di 0 su uarm ritorna sempre 0
+                        {
+                            v = n;
+                        }
+                        else
+                        {
+                            v = n >> i;
+                        }
+                        
+                        char bit = v & 1;
+                        term_putchar(term, '0' + bit);
+                        
+                        if(i && (i & 7) == 0) //se e' un multiplo di 8 stampiamo uno spazio
+                        {
+                            term_putchar(term, ' ');
+                        }
+                    }
+                } break;
             }
         }
         else
