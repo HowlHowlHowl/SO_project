@@ -4,19 +4,19 @@
 static struct list_head ready_queue;
 static pcb_t* current_process;
 
-void init_scheduler(void)
+void initScheduler(void)
 {
     mkEmptyProcQ(&ready_queue);
 }
 
-void add_process(pcb_t* p, int priority)
+void addProcess(pcb_t* p, int priority)
 {
     p->priority = priority;
     p->original_priority = priority;
     insertProcQ(&ready_queue, p);
 }
 
-void switch_to_process(pcb_t* p)
+static void switchToProcess(pcb_t* p)
 {
     current_process = p;
     LDST(&p->p_s);
@@ -40,6 +40,6 @@ void schedule(void)
         //Insert the process back into the queue
         insertProcQ(&ready_queue, first);
         
-        switch_to_process(first);
+        switchToProcess(first);
     }
 }

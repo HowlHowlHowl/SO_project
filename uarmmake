@@ -22,6 +22,11 @@ VPATH = $(UARM_DIR)
 #Build Path
 BUILD_DIR = build/uarm
 
+#Find all source files scanning for .c files in the src directory
+SRC_DIR = src/
+SRC_FILES := $(shell find $(SRC_DIR) -type f -name "*.c" -exec basename {} \;)
+OBJECT_FILES := $(addprefix $(BUILD_DIR)/,$(SRC_FILES:%.c=%.o))
+
 .PHONY : all new clean
 
 all : dir $(BUILD_DIR)/kernel.core.uarm
@@ -34,7 +39,7 @@ dir :
 $(BUILD_DIR)/kernel.core.uarm : $(BUILD_DIR)/kernel
 	elf2uarm -k $<
 
-$(BUILD_DIR)/kernel : $(BUILD_DIR)/p1.5test_bikaya_v0.o $(BUILD_DIR)/scheduler.o $(BUILD_DIR)/pcb.o $(BUILD_DIR)/asl.o $(BUILD_DIR)/kprintf.o $(BUILD_DIR)/term_print.o $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o $(BUILD_DIR)/libdiv.o $(BUILD_DIR)/main.o
+$(BUILD_DIR)/kernel : $(BUILD_DIR)/crtso.o $(BUILD_DIR)/libuarm.o $(BUILD_DIR)/libdiv.o $(OBJECT_FILES)
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 clean:

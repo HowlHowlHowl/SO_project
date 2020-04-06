@@ -1,75 +1,75 @@
-#include "main.h"
+#include "system.h"
 #include "pcb.h"
 #include "kprintf.h"
 #include "scheduler.h"
-#define SYS_NEWAREA_UMPS		0x200003D4
-#define PGMT_NEWAREA_UMPS		0x200002BC
-#define TLB_NEWAREA_UMPS		0x200001A4
-#define INT_NEWAREA_UMPS		0x2000008C
-#define FRAMESIZE_UMPS 		 	1024
-extern void test1();
-extern void test2();
-extern void test3();
-static struct list_head* ready_queue;
+#include "utils.h"
+
+void test1();
+void test2();
+void test3();
+
+void initNewArea(unsigned int area_addr, unsigned int handler_addr)
+{
+	state_t* state = (state_t*)area_addr;
+    zero_memory(state, sizeof(state_t));
+    
+    /*set the status register to t state: 
+      interrupts masked - virtual_memory OFF - kernel_mode ON*/
+#ifdef TARGET_UARM
+    state->sp = RAMTOP;
+    state->pc = handler_addr;
+    state->CP15_Control = 0;
+    state->cpsr = STATUS_SYS_MODE;
+    state->cpsr = STATUS_ALL_INT_DISABLE(state->cpsr);
+#endif
+    
+#ifdef TARGET_UMPS
+    state->reg_sp = RAMTOP;
+    state->pc_epc = handler_addr;
+    state->status = STATUS_KUc;
+#endif
+    
+}
+
+void initPcbState(int priority, unsigned int stack_pointer, void (*test_fun)()){
+	pcb_t* test = allocPcb();
+	
+    //Enable kernel mode and interval timer interrupt line
+#ifdef TARGET_UARM
+    test->p_s.sp = stack_pointer;
+    test->p_s.pc = (unsigned int)test_fun;
+    test->p_s.cpsr= STATUS_SYS_MODE;
+    test->p_s.cpsr= STATUS_ENABLE_TIMER(test->p_s.cpsr);
+#endif
+    
+#ifdef TARGET_UMPS
+    test->p_s.reg_sp= stack_pointer;
+    test->p_s.pc_epc = (unsigned int)test_fun;
+    test->p_s.status = STATUS_KUc | STATUS_IM(IL_TIMER); //STATUS_IM_MASK | STATUS_TE | STATUS_IEp ;
+#endif
+    
+	addProcess(test, priority);
+}
+
+
 int main()
 {
-   	initPcbs();
-   	init_scheduler();
-   	LIST_HEAD(ready_queue);
-   	//initASL(); non è da fare in questa fase del progetto
-   	#ifdef TARGET_UARM
-   		init_newArea(SYSBK_NEWAREA,0); 
-   		init_newArea(PGMTRAP_NEWAREA,0); 
-   		init_newArea(TLB_NEWAREA,0); 
-   		init_newArea(INT_NEWAREA,0); 
-   	#endif
-   	#ifdef TARGET_UMPS
-   		init_newArea(SYS_NEWAREA_UMPS,0); 
-   		init_newArea(PGMT_NEWAREA_UMPS,0); 
-   		init_newArea(TLB_NEWAREA_UMPS,0); 
-   		init_newArea(INT_NEWAREA_UMPS,0); 
-   	#endif
-   	init_Pcb_State(1, test1);
-   	init_Pcb_State(2, test2);
-   	init_Pcb_State(3, test3);
+    initPcbs();
+    initScheduler();
+    
+    initNewArea(SYSBK_NEWAREA,   0);
+    initNewArea(PGMTRAP_NEWAREA, 0);
+    initNewArea(TLB_NEWAREA,     0);
+    initNewArea(INT_NEWAREA,     0);
+    
+    initPcbState(1, RAMTOP - FRAMESIZE * 1, test1);
+    initPcbState(2, RAMTOP - FRAMESIZE * 2, test2);
+    initPcbState(3, RAMTOP - FRAMESIZE * 3, test3);
+    
     while(1)
     {
         WAIT();
     }
+    
     return 1;
-}
-void init_newArea(unsigned int areaAddr, unsigned int handlerAddr)
-{
-	state_t* state = (state_t*)areaAddr;
-	#ifdef TARGET_UARM
-		state->sp = ROMF_STACKTOP;
-		state->pc = handlerAddr;
-		state->CP15_Control = 0;
-		state->cpsr=STATUS_SYS_MODE;
-		state->cpsr=STATUS_ALL_INT_DISABLE(state->cpsr);
-		/*this should set the current program status register to the boot state: interrupt_mask ON - virtual_memory OFF - kernel_mode ON*/
-	#endif
-	#ifdef TARGET_UMPS
-		state->reg_sp=BUS_REG_RAM_BASE+BUS_REG_RAM_SIZE;
-		state->pc_epc = handlerAddr;
-		state->status = STATUS_KUc;
-		/*as for uARM*/
-	#endif
-}
-void init_Pcb_State(int priority, void test_fun()){
-	pcb_t* test = allocPcb();
-	
-	#ifdef TARGET_UARM
-		test->p_s.sp = ROMF_STACKTOP-(FRAMESIZE_UMPS*priority);
-		test->p_s.pc = (unsigned int)test_fun;
-		test->p_s.cpsr=STATUS_SYS_MODE;
-		test->p_s.cpsr=STATUS_ENABLE_TIMER(test->p_s.cpsr);
-	#endif
-	#ifdef TARGET_UMPS
-		test->p_s.reg_sp=(BUS_REG_RAM_BASE+BUS_REG_RAM_SIZE)-(FRAMESIZE_UMPS*priority);
-		test->p_s.pc_epc = (unsigned int)test_fun;
-		test->p_s.status = STATUS_KUc|STATUS_IEp|(STATUS_IM_MASK)|STATUS_TE;
-	#endif
-	add_process(test, priority);
-	insertProcQ(ready_queue, test);
 }

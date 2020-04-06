@@ -1,5 +1,6 @@
 #include "const.h"
 #include "pcb.h"
+#include "utils.h"
 
 /* PCB free list e table */
 static struct list_head pcbFreeList;
@@ -22,16 +23,6 @@ void initPcbs(void)
 void freePcb(pcb_t *p)
 {
     list_add(&p->p_next, &pcbFreeList);
-}
-
-/* Mette a 0 size byte a partire da ptr */
-static void zero_memory(void* ptr, unsigned int size)
-{
-    char* p = (char*)ptr;
-    for(unsigned int i = 0; i < size; i++)
-    {
-        p[i] = 0;
-    }
 }
 
 /* Alloca un pcb dalla lista libera se disponibile, altrimenti ritorna NULL*/
