@@ -1,8 +1,11 @@
 #include "scheduler.h"
 #include "system.h"
+#include "kprintf.h"
+#include "utils.h"
 
 static struct list_head ready_queue;
 static pcb_t* current_process;
+static pcb_t* idle_process;
 
 void initScheduler(void)
 {
@@ -16,14 +19,55 @@ void addProcess(pcb_t* p, int priority)
     insertProcQ(&ready_queue, p);
 }
 
+static void removePcbRecursively(pcb_t* p)
+{
+    pcb_t* removed = outProcQ(&ready_queue, p);
+    if(removed)
+    {
+        freePcb(removed);
+    }
+    
+    pcb_t* pos;
+	list_for_each_entry(pos, &p->p_child, p_sib)
+	{
+		removePcbRecursively(pos);
+	}
+}
+
+void setIdleProcess(pcb_t* p)
+{
+    idle_process = p;
+}
+
+void updateCurrentProcess(state_t* state)
+{
+    copy_memory(&current_process->p_s, state, sizeof(state_t));
+}
+
+void terminateCurrentProcess(void)
+{
+    removePcbRecursively(current_process);
+}
+
+static void resetIntervalTimer(void)
+{
+    unsigned int time_scale = *(unsigned int*)BUS_REG_TIME_SCALE;
+    //Imposta il timer a 3ms
+    unsigned int timer_value = 3000 * time_scale;
+    
+    *(unsigned int*)BUS_REG_TIMER = timer_value;
+}
+
 static void switchToProcess(pcb_t* p)
 {
+    resetIntervalTimer();
     current_process = p;
     LDST(&p->p_s);
 }
 
 void schedule(void)
 {
+    
     pcb_t* first = removeProcQ(&ready_queue);
     if(first)
     {
@@ -42,4 +86,6 @@ void schedule(void)
         
         switchToProcess(first);
     }
+    
+    switchToProcess(idle_process);
 }

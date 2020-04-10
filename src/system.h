@@ -13,7 +13,9 @@
 #define INT_NEWAREA     0x2000008C
 #define INT_OLDAREA     0x20000000
 
-#define FRAMESIZE       1024
+#define FRAME_SIZE      4096
+#define EXC_SYSCALL     EXC_SYS
+
 #endif
 
 #ifdef TARGET_UARM
@@ -23,6 +25,9 @@
 #include "uarm/uARMconst.h"
 #endif
 
+
 #define RAMBASE    *((unsigned int *)BUS_REG_RAM_BASE)
 #define RAMSIZE    *((unsigned int *)BUS_REG_RAM_SIZE)
 #define RAMTOP     (RAMBASE + RAMSIZE)
+
+#define SYS_TERMINATEPROCESS 3
