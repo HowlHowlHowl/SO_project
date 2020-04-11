@@ -10,15 +10,15 @@ void test2();
 void test3();
 
 void initNewArea(unsigned int area_addr, void (*handler)(void))
-{	//Allocate the new area
+{	//Popolare le new area
 	state_t* state = (state_t*)area_addr;
     zero_memory(state, sizeof(state_t));
     
-    /*Set the status register to state as below: 
-      interrupts masked - virtual_memory OFF - kernel_mode ON.
-      Also:
-      Set the PC to the dedicated handler for each new area
-      Set the SP to RamTop */
+    /*Imposta lo status register allo stato seguente:
+      interrupts mascherati - Virtual Memory OFF- Kernel Mode ON.
+	  Inoltre imposta:
+	  Il PC all handler dedicato alla new area corrispondente
+	  Lo SP a RAMTOP*/
 #ifdef TARGET_UARM
     state->sp = RAMTOP;
     state->pc = (unsigned int)handler;
@@ -36,8 +36,8 @@ void initNewArea(unsigned int area_addr, void (*handler)(void))
 
 pcb_t* initPcbState(unsigned int stack_pointer, void (*func)(void)){
 	pcb_t* p = allocPcb();
-    /*Enable kernel mode and interval timer interrupt line 
-      Set the PC to point the address of the relative test function*/
+    /*Abilita la kernel mode e l'interrupt line dell'interval timer
+      Imposta il PC a puntare l'address della relativa funzione di test*/
 #ifdef TARGET_UARM
     p->p_s.sp = stack_pointer;
     p->p_s.pc = (unsigned int)func;
@@ -68,24 +68,23 @@ int main()
 {
     initPcbs();
     initScheduler();
-    //Init of all the four new areas
+    //Inizializzazione delle quattro new area
     initNewArea(SYSBK_NEWAREA,   handler_sysbk);
     initNewArea(PGMTRAP_NEWAREA, handler_pgmtrap);
     initNewArea(TLB_NEWAREA,     handler_tlb);
     initNewArea(INT_NEWAREA,     handler_int);
-    //Init of the three test processes
+    //Inizializzazione dei tre processi di test
     pcb_t* p1 = initPcbState(RAMTOP - FRAME_SIZE * 1, test1);
     pcb_t* p2 = initPcbState(RAMTOP - FRAME_SIZE * 2, test2);
     pcb_t* p3 = initPcbState(RAMTOP - FRAME_SIZE * 3, test3);
-    //Adding the processes into the scheduler
+    //Aggiunta dei processi allo scheduler
     addProcess(p1, 1);
     addProcess(p2, 2);
     addProcess(p3, 3);
-    //Adding the idle process with the lowest priority
+    //Aggiunta del processo idle  
     pcb_t* idle = initPcbState(RAMTOP - FRAME_SIZE * 4, idle_func);
     setIdleProcess(idle);
-    /*Find the next process to execute and giving it the control and
-     refresh the priority of each remaining process*/
+    /*Avvio scheduler*/
     schedule();
     
     return 1;
