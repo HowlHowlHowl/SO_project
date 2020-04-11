@@ -12,6 +12,7 @@ Solo i seguenti format sono supportati:
   %d stampa un intero in decimale
   %u stampa un intero unsigned in decimale
   %x stampa un intero unsigned in esadecimale
+  %b stampa un intero unsigned in 32 cifre binarie, con uno spazio ogni 8 cifre
 */
 
 void kprintf(char* fmt, ...)
@@ -133,7 +134,9 @@ void kprintf(char* fmt, ...)
                     for(int i = 31; i >= 0; i--)
                     {
                         unsigned int v;
-                        if(i == 0) //shift di 0 su uarm ritorna sempre 0
+                        
+                        //shift di 0 su uarm ritorna sempre 0
+                        if(i == 0) 
                         {
                             v = n;
                         }
@@ -145,7 +148,8 @@ void kprintf(char* fmt, ...)
                         char bit = v & 1;
                         term_putchar(term, '0' + bit);
                         
-                        if(i && (i & 7) == 0) //se e' un multiplo di 8 stampiamo uno spazio
+                        //se e' un multiplo di 8 stampiamo uno spazio
+                        if(i && (i & 7) == 0)
                         {
                             term_putchar(term, ' ');
                         }
@@ -161,13 +165,3 @@ void kprintf(char* fmt, ...)
     
     va_end(va);
 }
-
-/* Div test 
-    unsigned int a = 12;
-    unsigned int b = 10;
-    
-    if((a / (unsigned int)10) != (a / b))
-    {
-        term_puts(TERMINAL0, "???");
-    }
-*/

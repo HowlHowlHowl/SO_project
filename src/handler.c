@@ -2,6 +2,8 @@
 #include "kprintf.h"
 #include "scheduler.h"
 
+//Macro per la gestione dei registri dello stato in modo analogo per entrambe le architetture
+
 #ifdef TARGET_UMPS
 #define STATE_EXCCODE(s) CAUSE_GET_EXCCODE((s)->cause)
 #define STATE_SYSCALL_NUMBER(s) (s)->reg_a0
@@ -16,12 +18,20 @@
 #define STATE_CAUSE(s) (s)->CP15_Cause
 #endif
 
+
+//Handler per system call e breakpoint
 void handler_sysbk(void)
 {
     state_t* old_state = (state_t*)SYSBK_OLDAREA;
 
+#ifdef TARGET_UMPS
+    //Incrementa il pc di 4 per l'architettura umps
+    old_state->pc_epc += 4;
+#endif
+    
     int exc_code = STATE_EXCCODE(old_state);
     
+    //Gestisce il caso di una syscall
     if(exc_code == EXC_SYSCALL)
     {
         unsigned int syscall_number = STATE_SYSCALL_NUMBER(old_state);
@@ -42,6 +52,7 @@ void handler_sysbk(void)
     LDST(old_state);
 }
 
+//Handler stub per program traps
 void handler_pgmtrap(void)
 {
     state_t* old_state = (state_t*)PGMTRAP_OLDAREA;
@@ -51,6 +62,7 @@ void handler_pgmtrap(void)
     LDST(old_state);
 }
 
+//Handler stub per la gestione del TLB
 void handler_tlb(void)
 {
     state_t* old_state = (state_t*)TLB_OLDAREA;
@@ -60,6 +72,7 @@ void handler_tlb(void)
     LDST(old_state);
 }
 
+//Handler per la gestione degli interrupt
 void handler_int(void)
 {
     state_t* old_state = (state_t*)INT_OLDAREA;
@@ -75,6 +88,8 @@ void handler_int(void)
     //Se la causa dell'interrupt e' il IL_TIMER
     if(CAUSE_IP_GET(cause, IL_TIMER))
     {
+        //Aggiorna lo stato del processo corrente e reinvoca lo scheduler,
+        //la chiamata schedule() non ritorna
         updateCurrentProcess(old_state);
         schedule();
     }

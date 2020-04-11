@@ -7,8 +7,5 @@ void handler_tlb(void);
 void handler_int(void);
 
 #endif
-/*
-New File
-*/
 
 

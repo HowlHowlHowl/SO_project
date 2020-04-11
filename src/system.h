@@ -1,3 +1,6 @@
+#ifndef SYSTEM_H
+#define SYSTEM_H
+
 #ifdef TARGET_UMPS
 #include "umps/libumps.h"
 #include "umps/arch.h"
@@ -31,3 +34,5 @@
 #define RAMTOP     (RAMBASE + RAMSIZE)
 
 #define SYS_TERMINATEPROCESS 3
+
+#endif

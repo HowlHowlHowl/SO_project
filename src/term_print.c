@@ -10,11 +10,13 @@
 #define CHAR_OFFSET 8
 #define TERM_STATUS_MASK 0xFF
 
-static unsigned int tx_status(termreg_t *tp) 
+//Ritorna lo stato del terminale specificato
+static unsigned int tx_status(termreg_t *term_reg) 
 {
-    return ((tp->transm_status) & TERM_STATUS_MASK);
+    return ((term_reg->transm_status) & TERM_STATUS_MASK);
 }
 
+//Stampa il carattere c sul terminale specificato
 int term_putchar(termreg_t* term_reg, char c) {
     unsigned int stat;
     stat = tx_status(term_reg);
@@ -33,6 +35,7 @@ int term_putchar(termreg_t* term_reg, char c) {
         return 0;
 }
 
+//Stampa la stringa zero-terminata str sul terminale specificato
 int term_puts(termreg_t* term_reg, char *str) 
 {
     while (*str)
