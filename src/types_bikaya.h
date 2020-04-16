@@ -1,17 +1,24 @@
-#ifndef _TYPES11_H
-#define _TYPES11_H
+#ifndef TYPES_BIKAYA_H_INCLUDED
+#define TYPES_BIKAYA_H_INCLUDED
+
 #ifdef TARGET_UMPS
-#include <umps/types.h>
+#include "umps/libumps.h"
+#include "umps/arch.h"
+#include "umps/types.h"
 #endif
 #ifdef TARGET_UARM
-#define UARM_MACHINE_COMPILING
-#include <uarm/uARMtypes.h>
+#include "uarm/libuarm.h"
+#include "uarm/arch.h"
+#include "uarm/uARMtypes.h"
+#include "uarm/uARMconst.h"
 #endif
+
+#include "const.h"
 #include "listx.h"
 
 typedef unsigned int memaddr;
 
-// Process Control Block (PCB) data structure
+/* Process Control Block (PCB) data structure */
 typedef struct pcb_t {
     /*process queue fields */
     struct list_head p_next;
@@ -23,9 +30,8 @@ typedef struct pcb_t {
     /* processor state, etc */
     state_t p_s;
 
-    /* dynamic process priority */
+    /* process priority */
     int priority;
-    /* initial process priority */
     int original_priority;
 
     /* key of the semaphore on which the process is eventually blocked */
@@ -34,7 +40,7 @@ typedef struct pcb_t {
 
 
 
-// Semaphore Descriptor (SEMD) data structure
+/* Semaphore Descriptor (SEMD) data structure */
 typedef struct semd_t {
     struct list_head s_next;
 
@@ -44,5 +50,14 @@ typedef struct semd_t {
     // Queue of PCBs blocked on the semaphore
     struct list_head s_procQ;
 } semd_t;
+
+typedef struct semdev {
+    semd_t disk[DEV_PER_INT];
+    semd_t tape[DEV_PER_INT];
+    semd_t network[DEV_PER_INT];
+    semd_t printer[DEV_PER_INT];
+    semd_t terminalR[DEV_PER_INT];
+    semd_t terminalT[DEV_PER_INT];
+} semdev;
 
 #endif

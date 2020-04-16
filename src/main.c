@@ -5,12 +5,9 @@
 #include "utils.h"
 #include "handler.h"
 
-void test1();
-void test2();
-void test3();
-
+//Popola la new area in area_addr
 void initNewArea(unsigned int area_addr, void (*handler)(void))
-{	//Popolare le new area
+{	
 	state_t* state = (state_t*)area_addr;
     zero_memory(state, sizeof(state_t));
     
@@ -34,8 +31,10 @@ void initNewArea(unsigned int area_addr, void (*handler)(void))
 #endif
 }
 
+//Inizializza un pcb e lo ritorna
 pcb_t* initPcbState(unsigned int stack_pointer, void (*func)(void)){
 	pcb_t* p = allocPcb();
+
     /*Abilita la kernel mode e l'interrupt line dell'interval timer
       Imposta il PC a puntare l'address della relativa funzione di test*/
 #ifdef TARGET_UARM
@@ -47,7 +46,7 @@ pcb_t* initPcbState(unsigned int stack_pointer, void (*func)(void)){
 #endif
     
 #ifdef TARGET_UMPS
-    p->p_s.reg_sp= stack_pointer;
+    p->p_s.reg_sp = stack_pointer;
     p->p_s.pc_epc = (unsigned int)func;
     p->p_s.status = STATUS_CU0 | STATUS_IM(IL_TIMER) | STATUS_IEp;
 #endif
@@ -67,23 +66,19 @@ void idle_func(void)
 int main()
 {
     initPcbs();
+    
     initScheduler();
+    
     //Inizializzazione delle quattro new area
     initNewArea(SYSBK_NEWAREA,   handler_sysbk);
     initNewArea(PGMTRAP_NEWAREA, handler_pgmtrap);
     initNewArea(TLB_NEWAREA,     handler_tlb);
     initNewArea(INT_NEWAREA,     handler_int);
-    //Inizializzazione dei tre processi di test
-    pcb_t* p1 = initPcbState(RAMTOP - FRAME_SIZE * 1, test1);
-    pcb_t* p2 = initPcbState(RAMTOP - FRAME_SIZE * 2, test2);
-    pcb_t* p3 = initPcbState(RAMTOP - FRAME_SIZE * 3, test3);
-    //Aggiunta dei processi allo scheduler
-    addProcess(p1, 1);
-    addProcess(p2, 2);
-    addProcess(p3, 3);
+    
     //Aggiunta del processo idle  
     pcb_t* idle = initPcbState(RAMTOP - FRAME_SIZE * 4, idle_func);
     setIdleProcess(idle);
+    
     /*Avvio scheduler*/
     schedule();
     
