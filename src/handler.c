@@ -71,32 +71,3 @@ void handler_tlb(void)
     
     LDST(old_state);
 }
-
-//Handler per la gestione degli interrupt
-void handler_int(void)
-{
-    state_t* old_state = (state_t*)INT_OLDAREA;
-    
-#ifdef TARGET_UARM
-    //Come specificato al capitolo 2.5.3 del manuale di uArm il pc va decrementato di 4
-    //in seguito ad un interrupt
-    old_state->pc -= 4;
-#endif
-    
-    unsigned int cause = STATE_CAUSE(old_state);
-    
-    //Se la causa dell'interrupt e' il IL_TIMER
-    if(CAUSE_IP_GET(cause, IL_TIMER))
-    {
-        //Aggiorna lo stato del processo corrente e reinvoca lo scheduler,
-        //la chiamata schedule() non ritorna
-        updateCurrentProcess(old_state);
-        schedule();
-    }
-    else
-    {
-        kprintf("Unexpected interrupt, cause register: 0x%x\n", cause);
-    }
-    
-    LDST(old_state);
-}
