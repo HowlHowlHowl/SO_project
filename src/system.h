@@ -19,6 +19,9 @@
 #define FRAME_SIZE      4096
 #define EXC_SYSCALL     EXC_SYS
 
+#define DEV_TRCV_S_CHARRECV 5
+#define DEV_TTRS_S_CHARTRSM 5
+
 #endif
 
 #ifdef TARGET_UARM

@@ -4,6 +4,7 @@
 #include "pcb.h"
 
 void initScheduler(void);
+void resumeProcess(pcb_t* p);
 void addProcess(pcb_t* p, int priority);
 void setIdleProcess(pcb_t* p);
 void updateCurrentProcess(state_t* state);

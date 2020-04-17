@@ -15,6 +15,12 @@ void initScheduler(void)
     mkEmptyProcQ(&ready_queue);
 }
 
+// Inserisce p nella coda, la priorita' di p e' gia' stata impostata in precedenza
+void resumeProcess(pcb_t* p)
+{
+    insertProcQ(&ready_queue, p);
+}
+
 // Aggiunge un processo alla coda con la priorita' specificata
 void addProcess(pcb_t* p, int priority)
 {

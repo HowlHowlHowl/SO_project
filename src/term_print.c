@@ -10,10 +10,16 @@
 #define CHAR_OFFSET 8
 #define TERM_STATUS_MASK 0xFF
 
-//Ritorna lo stato del terminale specificato
-static unsigned int tx_status(termreg_t *term_reg) 
+//Ritorna lo stato di trasmissione del terminale specificato
+unsigned int tx_status(termreg_t *term_reg) 
 {
     return ((term_reg->transm_status) & TERM_STATUS_MASK);
+}
+
+//Ritorna lo stato di ricezione del terminale specificato
+unsigned int rx_status(termreg_t *term_reg) 
+{
+    return ((term_reg->recv_status) & TERM_STATUS_MASK);
 }
 
 //Stampa il carattere c sul terminale specificato

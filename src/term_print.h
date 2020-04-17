@@ -12,6 +12,8 @@
 #define TERMINAL6 ((termreg_t*) DEV_REG_ADDR(IL_TERMINAL, 6))
 #define TERMINAL7 ((termreg_t*) DEV_REG_ADDR(IL_TERMINAL, 7))
 
+unsigned int tx_status(termreg_t *term_reg);
+unsigned int rx_status(termreg_t *term_reg);
 int term_putchar(termreg_t* term_reg, char c);
 int term_puts(termreg_t* term_reg, char* str);
 
