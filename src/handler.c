@@ -1,12 +1,16 @@
 #include "system.h"
 #include "kprintf.h"
+#include "const_bikaya.h"
 #include "scheduler.h"
-
+#include "systemcall.h"
 //Macro per la gestione dei registri dello stato in modo analogo per entrambe le architetture
 
 #ifdef TARGET_UMPS
 #define STATE_EXCCODE(s) CAUSE_GET_EXCCODE((s)->cause)
 #define STATE_SYSCALL_NUMBER(s) (s)->reg_a0
+#define STATE_SYSCALL_P1(s) (s)->reg_a1
+#define STATE_SYSCALL_P2(s) (s)->reg_a2
+#define STATE_SYSCALL_P3(s) (s)->reg_a3
 #define STATE_CAUSE(s) (s)->cause
 //Definita in modo analogo a uarm
 #define CAUSE_IP_GET(cause, n) ((cause) & (CAUSE_IP(n)))
@@ -15,6 +19,9 @@
 #ifdef TARGET_UARM
 #define STATE_EXCCODE(s) CAUSE_EXCCODE_GET((s)->CP15_Cause)
 #define STATE_SYSCALL_NUMBER(s) (s)->a1
+#define STATE_SYSCALL_P1(s) (s)->a2
+#define STATE_SYSCALL_P2(s) (s)->a3
+#define STATE_SYSCALL_P3(s) (s)->a4
 #define STATE_CAUSE(s) (s)->CP15_Cause
 #endif
 
@@ -38,13 +45,18 @@ void handler_sysbk(void)
         
         switch(syscall_number)
         {
-            case SYS_TERMINATEPROCESS:{
+            case TERMINATEPROCESS:{
                 // Terminiamo il processo  corrente e passiamo il controllo al prossimo
                 // processo in coda, la chiamata schedule() non ritorna.
                 terminateCurrentProcess();
                 schedule();
-            } break;
-            
+                break;
+            }
+            case WAITIO:{
+            	
+				sysCallIO((unsigned int)STATE_SYSCALL_P1(old_state),(unsigned int*)STATE_SYSCALL_P2(old_state),(int)STATE_SYSCALL_P3(old_state));
+				break;
+            }
             default: kprintf("Unexcpeted syscall %u\n", syscall_number);
         }
     }

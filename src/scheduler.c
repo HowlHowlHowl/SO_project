@@ -107,3 +107,6 @@ void schedule(void)
     //Se la ready queue e' vuota passa il controllo al processo idle
     switchToProcess(idle_process);
 }
+pcb_t *removeCurrentProcess(void){
+	return outProcQ(&ready_queue,current_process);
+}

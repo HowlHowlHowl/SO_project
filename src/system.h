@@ -17,7 +17,6 @@
 #define INT_OLDAREA     0x20000000
 
 #define FRAME_SIZE      4096
-#define EXC_SYSCALL     EXC_SYS
 
 #define DEV_TRCV_S_CHARRECV 5
 #define DEV_TTRS_S_CHARTRSM 5
@@ -31,11 +30,8 @@
 #include "uarm/uARMconst.h"
 #endif
 
-
 #define RAMBASE    *((unsigned int *)BUS_REG_RAM_BASE)
 #define RAMSIZE    *((unsigned int *)BUS_REG_RAM_SIZE)
 #define RAMTOP     (RAMBASE + RAMSIZE)
-
-#define SYS_TERMINATEPROCESS 3
 
 #endif
