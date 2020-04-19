@@ -1,6 +1,7 @@
 #include "const.h"
 #include "pcb.h"
 #include "utils.h"
+#include "scheduler.h"
 
 /* PCB free list e table */
 static struct list_head pcbFreeList;
@@ -46,7 +47,9 @@ pcb_t *allocPcb(void)
     result->priority = 0;
     result->original_priority = 0;
     result->p_semkey = NULL;
-    
+    result->kernel_time = 0;
+    result->user_time = 0;
+    result->begin_timestamp = 0;
     return result;
 }
 

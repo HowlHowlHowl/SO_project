@@ -4,23 +4,7 @@
 #include "const_bikaya.h"
 #include "term_print.h"
 #include "asl.h"
-
-//TODO: sposta sta roba nel file handler.c
-#ifdef TARGET_UMPS
-#define STATE_EXCCODE(s) CAUSE_GET_EXCCODE((s)->cause)
-#define STATE_SYSCALL_NUMBER(s) (s)->reg_a0
-#define STATE_SYSCALL_RETURN(s) (s)->reg_v0
-#define STATE_CAUSE(s) (s)->cause
-//Definita in modo analogo a uarm
-#define CAUSE_IP_GET(cause, n) ((cause) & (CAUSE_IP(n)))
-#endif
-
-#ifdef TARGET_UARM
-#define STATE_EXCCODE(s) CAUSE_EXCCODE_GET((s)->CP15_Cause)
-#define STATE_SYSCALL_NUMBER(s) (s)->a1
-#define STATE_SYSCALL_RETURN(s) (s)->a1
-#define STATE_CAUSE(s) (s)->CP15_Cause
-#endif
+#include "handler.c"
 
 #define CMD_ACK 1
 
@@ -90,7 +74,6 @@ void checkDeviceInterrupts(unsigned int cause)
                     }
                 }
             }
-            
         }
     }
 }
@@ -114,8 +97,13 @@ void handler_int(void)
     {
         //Se il time slice e' terminato in seguito a un interrupt dell'interval timer
         //aggiorna lo stato del processo corrente e reinvoca lo scheduler,
-        //la chiamata schedule() non ritorna
+        pcb_t* currentProc = getCurrentProcess();
         updateCurrentProcess(old_state);
+        
+        //Il time slice in user mode termina definitivamente e l'user time viene aggiornato
+        currentProc->user_time += getTimeSliceBegin() - getTime();
+        
+        //la chiamata schedule() non ritorna
         schedule();
     }
     else

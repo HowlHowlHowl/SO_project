@@ -4,6 +4,8 @@
 #include "utils.h"
 
 #define TIME_SLICE_DURATION_MS 3
+//time-stamp del tempo in cui viene passato il controllo al processo
+static unsigned int current_slice_timestamp;
 
 static struct list_head ready_queue;
 static pcb_t* current_process;
@@ -26,6 +28,8 @@ void addProcess(pcb_t* p, int priority)
 {
     p->priority = priority;
     p->original_priority = priority;
+    p->begin_timestamp = getTime();
+    setTimeSliceBegin(getTime());
     insertProcQ(&ready_queue, p);
 }
 
@@ -107,6 +111,21 @@ void schedule(void)
     //Se la ready queue e' vuota passa il controllo al processo idle
     switchToProcess(idle_process);
 }
+//Rimuove e ritorna il processo corrente
 pcb_t *removeCurrentProcess(void){
 	return outProcQ(&ready_queue,current_process);
+}
+//Ritorna il processo corrente
+pcb_t *getCurrentProcess(void){
+	return current_process;
+}
+//Ritorna i primi 32 bit del Time of Day timer
+unsigned int getTime(void){
+	return getTOD_LO();
+}
+unsigned int getTimeSliceBegin(void){
+	return current_slice_timestamp;
+}
+void setTimeSliceBegin(unsigned int time) {
+	time = current_slice_timestamp;	
 }

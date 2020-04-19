@@ -11,5 +11,10 @@ void updateCurrentProcess(state_t* state);
 void terminateCurrentProcess(void);
 void schedule(void);
 pcb_t *removeCurrentProcess(void);
+pcb_t *getCurrentProcess(void);
+unsigned int getTime(void);
+unsigned int getTimeSliceBegin(void);
+void setTimeSliceBegin(unsigned int time);
+
 
 #endif
