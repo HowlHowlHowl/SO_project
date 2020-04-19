@@ -12,6 +12,7 @@
 #define STATE_SYSCALL_P2(s) (s)->reg_a2
 #define STATE_SYSCALL_P3(s) (s)->reg_a3
 #define STATE_CAUSE(s) (s)->cause
+#define STATE_SYSCALL_RETURN(s) (s)->reg_v0
 //Definita in modo analogo a uarm
 #define CAUSE_IP_GET(cause, n) ((cause) & (CAUSE_IP(n)))
 #endif
@@ -22,6 +23,7 @@
 #define STATE_SYSCALL_P1(s) (s)->a2
 #define STATE_SYSCALL_P2(s) (s)->a3
 #define STATE_SYSCALL_P3(s) (s)->a4
+#define STATE_SYSCALL_RETURN(s) (s)->a1
 #define STATE_CAUSE(s) (s)->CP15_Cause
 #endif
 
