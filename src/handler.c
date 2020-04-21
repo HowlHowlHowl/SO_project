@@ -2,7 +2,7 @@
 #include "kprintf.h"
 #include "const_bikaya.h"
 #include "scheduler.h"
-#include "systemcall.h"
+#include "syscall.h"
 //Macro per la gestione dei registri dello stato in modo analogo per entrambe le architetture
 
 #ifdef TARGET_UMPS
@@ -31,6 +31,7 @@
 void handler_sysbk(void)
 {	
 	pcb_t* currentProc = getCurrentProcess();
+	
 	//Aggiorna l'user_time al tempo attuale - il tempo di inizio dell'ultima time slice
 	currentProc->user_time += getTime() - getTimeSliceBegin();
 	unsigned int startKernelTime = getTime();
@@ -40,6 +41,7 @@ void handler_sysbk(void)
 	unsigned int p1 = STATE_SYSCALL_P1(old_state);
 	unsigned int p2 = STATE_SYSCALL_P2(old_state);
 	unsigned int p3 = STATE_SYSCALL_P3(old_state);
+    
 #ifdef TARGET_UMPS
     //Incrementa il pc di 4 per l'architettura umps
     old_state->pc_epc += 4;
@@ -61,21 +63,25 @@ void handler_sysbk(void)
             case TERMINATEPROCESS:{
                 // Terminiamo il processo  corrente e passiamo il controllo al prossimo
                 // processo in coda, la chiamata schedule() non ritorna.
-                terminateCurrentProcess();
-                schedule();
+                STATE_SYSCALL_RETURN(old_state) = sysCallTerminateProcess((void *)p1, p2, p3);
                 break;
             }
+            case CREATEPROCESS:
+            {
+				STATE_SYSCALL_RETURN(old_state) = sysCallCreateProcess((state_t*)p1, (int)p2, (void **)p3);
+        		break;
+            }
             case WAITIO:{
-				sysCallIO((unsigned int)p1,(unsigned int*)p2,(int)p3);
+				sysCallIO((unsigned int)p1, (unsigned int*)p2, (int)p3);
 				break;
             }
             default: kprintf("Unexcpeted syscall identifier %u\n", syscall_number);
         }
     }
-    
-    LDST(old_state);
+    //TODO: pgmtrap if exc_code == user_mode for priviliged request
     currentProc->kernel_time += startKernelTime-getTime();
-    setTimeSliceBegin(getTime());
+    updateTimeSliceBegin();
+    LDST(old_state);
 }
 
 //Handler stub per program traps

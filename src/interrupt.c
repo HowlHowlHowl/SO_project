@@ -4,7 +4,31 @@
 #include "const_bikaya.h"
 #include "term_print.h"
 #include "asl.h"
-#include "handler.c"
+#include "handler.h"
+
+//Macro per la gestione dei registri dello stato in modo analogo per entrambe le architetture
+
+#ifdef TARGET_UMPS
+#define STATE_EXCCODE(s) CAUSE_GET_EXCCODE((s)->cause)
+#define STATE_SYSCALL_NUMBER(s) (s)->reg_a0
+#define STATE_SYSCALL_P1(s) (s)->reg_a1
+#define STATE_SYSCALL_P2(s) (s)->reg_a2
+#define STATE_SYSCALL_P3(s) (s)->reg_a3
+#define STATE_CAUSE(s) (s)->cause
+#define STATE_SYSCALL_RETURN(s) (s)->reg_v0
+//Definita in modo analogo a uarm
+#define CAUSE_IP_GET(cause, n) ((cause) & (CAUSE_IP(n)))
+#endif
+
+#ifdef TARGET_UARM
+#define STATE_EXCCODE(s) CAUSE_EXCCODE_GET((s)->CP15_Cause)
+#define STATE_SYSCALL_NUMBER(s) (s)->a1
+#define STATE_SYSCALL_P1(s) (s)->a2
+#define STATE_SYSCALL_P2(s) (s)->a3
+#define STATE_SYSCALL_P3(s) (s)->a4
+#define STATE_SYSCALL_RETURN(s) (s)->a1
+#define STATE_CAUSE(s) (s)->CP15_Cause
+#endif
 
 #define CMD_ACK 1
 

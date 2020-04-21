@@ -3,6 +3,32 @@
 #include "kprintf.h"
 #include "utils.h"
 
+//Macro per la gestione dei registri dello stato in modo analogo per entrambe le architetture
+
+#ifdef TARGET_UMPS
+#define STATE_EXCCODE(s) CAUSE_GET_EXCCODE((s)->cause)
+#define STATE_SYSCALL_NUMBER(s) (s)->reg_a0
+#define STATE_SYSCALL_P1(s) (s)->reg_a1
+#define STATE_SYSCALL_P2(s) (s)->reg_a2
+#define STATE_SYSCALL_P3(s) (s)->reg_a3
+#define STATE_SYSCALL_RETURN(s) (s)->reg_v0
+#define STATE_CAUSE(s) (s)->cause
+#define getTODLO() (*((unsigned int *)BUS_TODLOW)
+#define BUS_TODLOW 0x1000001c
+
+#define CAUSE_IP_GET(cause, n) ((cause) & (CAUSE_IP(n)))
+#endif
+//Definita in modo analogo a uarm
+#ifdef TARGET_UARM
+#define STATE_EXCCODE(s) CAUSE_EXCCODE_GET((s)->CP15_Cause)
+#define STATE_SYSCALL_NUMBER(s) (s)->a1
+#define STATE_SYSCALL_P1(s) (s)->a2
+#define STATE_SYSCALL_P2(s) (s)->a3
+#define STATE_SYSCALL_P3(s) (s)->a4
+#define STATE_SYSCALL_RETURN(s) (s)->a1
+#define STATE_CAUSE(s) (s)->CP15_Cause
+#endif
+
 #define TIME_SLICE_DURATION_MS 3
 //time-stamp del tempo in cui viene passato il controllo al processo
 static unsigned int current_slice_timestamp;
@@ -29,7 +55,6 @@ void addProcess(pcb_t* p, int priority)
     p->priority = priority;
     p->original_priority = priority;
     p->begin_timestamp = getTime();
-    setTimeSliceBegin(getTime());
     insertProcQ(&ready_queue, p);
 }
 
@@ -61,10 +86,15 @@ void updateCurrentProcess(state_t* state)
     copy_memory(&current_process->p_s, state, sizeof(state_t));
 }
 
-//Termina il processo corrente e l'labero radicato in esso
+//Termina il processo corrente e l'albero radicato in esso
 void terminateCurrentProcess(void)
 {
     removePcbRecursively(current_process);
+}
+//Termina il processo passato come parametro e l'albero radicato in esso
+void terminateProcess(pcb_t* p)
+{
+    removePcbRecursively(p);
 }
 
 //Fa ripartire l'interval timer
@@ -82,6 +112,7 @@ static void switchToProcess(pcb_t* p)
 {
     resetIntervalTimer();
     current_process = p;
+    updateTimeSliceBegin();
     LDST(&p->p_s);
 }
 
@@ -112,20 +143,26 @@ void schedule(void)
     switchToProcess(idle_process);
 }
 //Rimuove e ritorna il processo corrente
-pcb_t *removeCurrentProcess(void){
+pcb_t *removeCurrentProcess(void)
+{
 	return outProcQ(&ready_queue,current_process);
 }
 //Ritorna il processo corrente
-pcb_t *getCurrentProcess(void){
+pcb_t *getCurrentProcess(void)
+{
 	return current_process;
 }
 //Ritorna i primi 32 bit del Time of Day timer
-unsigned int getTime(void){
-	return getTOD_LO();
+unsigned int getTime(void)
+{
+	return getTODLO();
 }
-unsigned int getTimeSliceBegin(void){
+unsigned int getTimeSliceBegin(void)
+{
 	return current_slice_timestamp;
 }
-void setTimeSliceBegin(unsigned int time) {
-	time = current_slice_timestamp;	
+//Aggiorna il current_slice_timestamp al tempo attuale
+void updateTimeSliceBegin(void) 
+{
+	current_slice_timestamp = getTime();	
 }

@@ -68,11 +68,11 @@ void freeSemd(semd_t *toDel)
 /*Inserisce un pcb p nella coda di processi associata al semaforo con chiave key*/
 int insertBlocked(int *key, pcb_t* p) 
 {
-	semd_t* tmp=getSemd(key);
+	semd_t* tmp = getSemd(key);
 	/*Se esite aggiunge il pcb altrimenti crea un nuovo semd*/
 	if(tmp!=NULL)
 	{
-		p->p_semkey=key;
+		p->p_semkey = key;
 		insertProcQ(&tmp->s_procQ, p);
 		return 0;
 	}

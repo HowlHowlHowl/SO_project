@@ -1,7 +1,6 @@
 #include "const.h"
 #include "pcb.h"
 #include "utils.h"
-#include "scheduler.h"
 
 /* PCB free list e table */
 static struct list_head pcbFreeList;

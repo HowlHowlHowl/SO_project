@@ -6,6 +6,7 @@
 void initScheduler(void);
 void resumeProcess(pcb_t* p);
 void addProcess(pcb_t* p, int priority);
+void terminateProcess(pcb_t* p);
 void setIdleProcess(pcb_t* p);
 void updateCurrentProcess(state_t* state);
 void terminateCurrentProcess(void);
@@ -14,7 +15,6 @@ pcb_t *removeCurrentProcess(void);
 pcb_t *getCurrentProcess(void);
 unsigned int getTime(void);
 unsigned int getTimeSliceBegin(void);
-void setTimeSliceBegin(unsigned int time);
-
+void updateTimeSliceBegin(void);
 
 #endif
