@@ -56,27 +56,65 @@ void handler_sysbk(void)
         
         switch(syscall_number)
         {	
-        	case GETCPUTIME:{
-        		sysCallGetCPUTime((unsigned int*)p1, (unsigned int*)p2, (unsigned int*)p3);
+        	//SysCall 1.
+        	case GETCPUTIME:
+        	{
+        	sysCallGetCPUTime((unsigned int*)p1, (unsigned int*)p2, (unsigned int*)p3);
         		break;
         	}
-            case TERMINATEPROCESS:{
+        	
+        	//SysCall 2.
+        	case CREATEPROCESS:
+            {
+				STATE_SYSCALL_RETURN(old_state) = sysCallCreateProcess((state_t*)p1, (int)p2, (void **)p3);
+        		break;
+            }
+            
+            //SysCall 3.
+            case TERMINATEPROCESS:
+            {
                 // Terminiamo il processo  corrente e passiamo il controllo al prossimo
                 // processo in coda, la chiamata schedule() non ritorna.
                 STATE_SYSCALL_RETURN(old_state) = sysCallTerminateProcess((void *)p1, p2, p3);
                 break;
             }
-            case CREATEPROCESS:
+            
+            //SysCall 4.
+            case VERHOGEN:
             {
-				STATE_SYSCALL_RETURN(old_state) = sysCallCreateProcess((state_t*)p1, (int)p2, (void **)p3);
-        		break;
+            	sysCallVerhogen((int*)p1, 0, 0);
+            	break;
             }
-            case WAITIO:{
-				sysCallIO((unsigned int)p1, (unsigned int*)p2, (int)p3);
+            
+            //SysCall 5.
+            case PASSEREN:
+            {
+            	sysCallPasseren((int*)p1, 0, 0);
+            	break;
+            }
+            
+            //SysCall 6.
+            case WAITIO:
+            {
+            	sysCallDo_IO(p1, (unsigned int*)p2, (int)p3);
 				break;
             }
-            default: kprintf("Unexcpeted syscall identifier %u\n", syscall_number);
+            
+            //SysCall 8.
+            case GETPID:
+            {
+            	sysCallGetPidPPid((void**)p1, (void**)p2, 0);
+            	break;
+            }
+            //SysCall 7 e default.
+          	default:
+          	{
+            	STATE_SYSCALL_RETURN(old_state) = sysCallSpecPassup((int)p1, (state_t*)p2, (state_t*)p3);
+            
+             kprintf("Unexcpeted syscall identifier %u\n", syscall_number);
+        	}
         }
+        
     }
     //TODO: pgmtrap if exc_code == user_mode for priviliged request
     currentProc->kernel_time += startKernelTime-getTime();

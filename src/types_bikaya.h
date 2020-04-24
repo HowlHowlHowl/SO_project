@@ -33,6 +33,8 @@ typedef struct pcb_t {
     /* process priority */
     int priority;
     int original_priority;
+    /* keep track of the types already used in the call of pass up syscall during the lifetime of the process*/
+    int passup_type_check[3];
 
     /* key of the semaphore on which the process is eventually blocked */
     int *p_semkey;

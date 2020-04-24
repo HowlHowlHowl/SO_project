@@ -13,7 +13,7 @@
 #define STATE_SYSCALL_P3(s) (s)->reg_a3
 #define STATE_SYSCALL_RETURN(s) (s)->reg_v0
 #define STATE_CAUSE(s) (s)->cause
-#define getTODLO() (*((unsigned int *)BUS_TODLOW)
+#define getTODLO() (*(unsigned int *)BUS_TODLOW)
 #define BUS_TODLOW 0x1000001c
 
 #define CAUSE_IP_GET(cause, n) ((cause) & (CAUSE_IP(n)))
@@ -65,8 +65,8 @@ static void removePcbRecursively(pcb_t* p)
     if(removed)
     {
         freePcb(removed);
-    }
     
+    }
     pcb_t* pos;
 	list_for_each_entry(pos, &p->p_child, p_sib)
 	{
@@ -86,7 +86,13 @@ void updateCurrentProcess(state_t* state)
     copy_memory(&current_process->p_s, state, sizeof(state_t));
 }
 
+//Aggiorna lo stato del processo passato come parametro allo stato del processo corrente
 //Termina il processo corrente e l'albero radicato in esso
+void updateToCurrentProcess(state_t* state)
+{
+copy_memory(state,&current_process->p_s,sizeof(state_t));
+}
+
 void terminateCurrentProcess(void)
 {
     removePcbRecursively(current_process);

@@ -9,6 +9,7 @@ void addProcess(pcb_t* p, int priority);
 void terminateProcess(pcb_t* p);
 void setIdleProcess(pcb_t* p);
 void updateCurrentProcess(state_t* state);
+void updateToCurrentProcess(state_t* state);
 void terminateCurrentProcess(void);
 void schedule(void);
 pcb_t *removeCurrentProcess(void);

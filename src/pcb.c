@@ -49,6 +49,9 @@ pcb_t *allocPcb(void)
     result->kernel_time = 0;
     result->user_time = 0;
     result->begin_timestamp = 0;
+    result->passup_type_check[0] = 0;
+    result->passup_type_check[1] = 0;
+    result->passup_type_check[2] = 0;
     return result;
 }
 

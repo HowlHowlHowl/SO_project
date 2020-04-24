@@ -2,9 +2,10 @@
 #include "scheduler.h"
 #include "asl.h"
 #include "syscall.h"
+#include "handler.h"
 
 //Vengono definiti i registri da modificare se l'operazione 
-//SYSCALL_CREATE_PROCESS (sysCallCreateProcess();) va a buon  fine
+//SYSCALL_CREATE_PROCESS (sysCallCreateProcess) va a buon  fine
 #ifdef TARGET_UMPS
 	#define STATUS(s) (s)->status
 	#define PC(s) (s)->pc_epc
@@ -15,13 +16,12 @@
 	#define STATUS(s) (s)->cpsr
 	#define PC(s) (s)->pc
 	#define SP(s) (s)->sp
-#endif
-	
-	
-//SysCall 1. 
-//Quando invocata restituisce il tempo di esecuzione del processo chiamante
-// suddiviso in user_time kernel_time e global_time, 
-//il tempo totale trasccorso dalla prima attivazione del processo.
+#endif	
+
+/*SysCall 1. 
+Quando invocata restituisce il tempo di esecuzione del processo chiamante
+suddiviso in user_time kernel_time e global_time, 
+il tempo totale trasccorso dalla prima attivazione del processo.*/
 void sysCallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *wallclock)
 {
 	pcb_t* currentProc = getCurrentProcess();
@@ -57,9 +57,9 @@ int sysCallCreateProcess(state_t* statep, int priority, void **cpid)
 	return -1;
 }
 
-//SysCall 3. Termina il processo identificato dal parametro pid 
-//e l'albero di processi radicato in esso, se non esiste ritorrna errore. 
-//Se pid è NULL termina il processo corrente
+/*SysCall 3. Termina il processo identificato dal parametro pid 
+e l'albero di processi radicato in esso, se non esiste ritorrna errore. 
+Se pid è NULL termina il processo corrente*/
 int sysCallTerminateProcess(void* pid,int a, int b){
 	if(!pid)
 	{
@@ -103,7 +103,7 @@ void sysCallPasseren(int* semaddr, int a, int b)
 	if(*semaddr==0)
 	{
 		pcb_t* process = getCurrentProcess();
-		insertBlocked(semaddr, &process);
+		insertBlocked(semaddr, process);
 		removeCurrentProcess();
 	}
 	else
@@ -112,8 +112,8 @@ void sysCallPasseren(int* semaddr, int a, int b)
 	}
 	
 }
-//SysCall 6.
-void sysCallIO(unsigned int command, unsigned int *reg, int subdevice)
+//SysCall 6. Attiva un operazione di input/output. L'operazione è bloccante 
+void sysCallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 {
 	//Viene definito un device generico
 	devreg_t* dev = (devreg_t*)reg; 
@@ -143,4 +143,55 @@ void sysCallIO(unsigned int command, unsigned int *reg, int subdevice)
 	//Inserimento del processo corrente in coda su di un semaforo 
 	insertBlocked(key, currentProcess);
 	schedule();
+}
+
+//SysCall 7. Regstra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap 
+int sysCallSpecPassup(int type, state_t* old, state_t* new_)
+{
+	pcb_t* current = getCurrentProcess();
+	state_t* currentState = &current->p_s;
+	//Se passup_type_check[type] == 0, si procede, altrimenti nasce un errore 
+	if(!current->passup_type_check[type])
+	{
+	/*SpecPassup non è ancora stata chiamata per il tipo contenuto in type => si può procedere con l'esecuzione della SysCall*/ 
+		switch(type)
+		{
+			case 0:
+			{
+				PC(currentState) = (unsigned int) handler_sysbk;
+			}
+			case 1:
+			{
+				PC(currentState) = (unsigned int) handler_pgmtrap;
+			}
+			case 2:
+			{
+				PC(currentState) = (unsigned int) handler_tlb;
+			}
+		}
+		current->passup_type_check[type]=1;
+		updateToCurrentProcess(old);
+		updateCurrentProcess(new_);
+		return 0;
+	}
+	else
+	{
+		/*SpecPassup per il processo che ha scatenato la SysCall è già stata chiamata con il tipo indicato da type*/ 
+		sysCallTerminateProcess(NULL,0,0);
+		return -1;
+	}
+}
+//SysCall 8.
+void sysCallGetPidPPid(void** pid, void** ppid, int a)
+{
+	pcb_t* currentProcess = getCurrentProcess();
+	pcb_t* parentProcess = currentProcess->p_parent;
+	if(pid)
+	{
+		*pid =  currentProcess;
+	}
+	if(pid)
+	{
+		*ppid = parentProcess;
+	}
 }
