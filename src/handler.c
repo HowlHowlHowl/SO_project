@@ -31,10 +31,11 @@
 void handler_sysbk(void)
 {	
 	pcb_t* currentProc = getCurrentProcess();
-	
+
 	//Aggiorna l'user_time al tempo attuale - il tempo di inizio dell'ultima time slice
 	currentProc->user_time += getTime() - getTimeSliceBegin();
 	unsigned int startKernelTime = getTime();
+	updateCurrentProcess(old_state);
     state_t* old_state = (state_t*)SYSBK_OLDAREA;
     
     //Vengono definiti i parametri per le SysCall

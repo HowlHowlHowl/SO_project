@@ -177,7 +177,8 @@ int sysCallSpecPassup(int type, state_t* old, state_t* new_)
 	else
 	{
 		/*SpecPassup per il processo che ha scatenato la SysCall è già stata chiamata con il tipo indicato da type*/ 
-		sysCallTerminateProcess(NULL,0,0);
+		terminateCurrentProcess();
+		schedule();
 		return -1;
 	}
 }
@@ -190,7 +191,7 @@ void sysCallGetPidPPid(void** pid, void** ppid, int a)
 	{
 		*pid =  currentProcess;
 	}
-	if(pid)
+	if(ppid)
 	{
 		*ppid = parentProcess;
 	}
