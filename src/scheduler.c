@@ -43,12 +43,6 @@ void initScheduler(void)
     mkEmptyProcQ(&ready_queue);
 }
 
-// Inserisce p nella coda, la priorita' di p e' gia' stata impostata in precedenza
-void resumeProcess(pcb_t* p)
-{
-    insertProcQ(&ready_queue, p);
-}
-
 // Aggiunge un processo alla coda con la priorita' specificata
 void addProcess(pcb_t* p, int priority)
 {
@@ -86,21 +80,52 @@ void updateCurrentProcess(state_t* state)
     copy_memory(&current_process->p_s, state, sizeof(state_t));
 }
 
-//Aggiorna lo stato del processo passato come parametro allo stato del processo corrente
-//Termina il processo corrente e l'albero radicato in esso
-void updateToCurrentProcess(state_t* state)
-{
-copy_memory(state,&current_process->p_s,sizeof(state_t));
-}
 
+//Termina il processo corrente e l'albero radicato in esso
 void terminateCurrentProcess(void)
 {
     removePcbRecursively(current_process);
 }
+
 //Termina il processo passato come parametro e l'albero radicato in esso
 void terminateProcess(pcb_t* p)
 {
     removePcbRecursively(p);
+}
+
+// Inserisce p nella coda, la priorita' di p e' gia' stata impostata in precedenza
+void resumeProcess(pcb_t* p)
+{
+    insertProcQ(&ready_queue, p);
+}
+
+//Rimuove dalla ready queue e ritorna il processo corrente
+pcb_t* suspendCurrentProcess(void)
+{
+    return outProcQ(&ready_queue,current_process);
+}
+
+//Ritorna il processo corrente
+pcb_t* getCurrentProcess(void)
+{
+    return current_process;
+}
+
+//Ritorna i primi 32 bit del Time of Day timer
+unsigned int getTime(void)
+{
+    return getTODLO();
+}
+
+unsigned int getTimeSliceBegin(void)
+{
+    return current_slice_timestamp;
+}
+
+//Aggiorna il current_slice_timestamp al tempo attuale
+void updateTimeSliceBegin(void) 
+{
+    current_slice_timestamp = getTime();    
 }
 
 //Fa ripartire l'interval timer
@@ -148,27 +173,4 @@ void schedule(void)
     //Se la ready queue e' vuota passa il controllo al processo idle
     switchToProcess(idle_process);
 }
-//Rimuove e ritorna il processo corrente
-pcb_t *removeCurrentProcess(void)
-{
-    return outProcQ(&ready_queue,current_process);
-}
-//Ritorna il processo corrente
-pcb_t *getCurrentProcess(void)
-{
-    return current_process;
-}
-//Ritorna i primi 32 bit del Time of Day timer
-unsigned int getTime(void)
-{
-    return getTODLO();
-}
-unsigned int getTimeSliceBegin(void)
-{
-    return current_slice_timestamp;
-}
-//Aggiorna il current_slice_timestamp al tempo attuale
-void updateTimeSliceBegin(void) 
-{
-    current_slice_timestamp = getTime();    
-}
+

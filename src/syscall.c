@@ -4,25 +4,11 @@
 #include "syscall.h"
 #include "handler.h"
 
-//Vengono definiti i registri da modificare se l'operazione 
-//SYSCALL_CREATE_PROCESS (sysCallCreateProcess) va a buon  fine
-#ifdef TARGET_UMPS
-    #define STATUS(s) (s)->status
-    #define PC(s) (s)->pc_epc
-    #define SP(s) (s)->reg_sp
-#endif
-//Analogamente per UARM
-#ifdef TARGET_UARM
-    #define STATUS(s) (s)->cpsr
-    #define PC(s) (s)->pc
-    #define SP(s) (s)->sp
-#endif    
-
-/*SysCall 1. 
+/*SysCall 1.
 Quando invocata restituisce il tempo di esecuzione del processo chiamante
-suddiviso in user_time kernel_time e global_time, 
+suddiviso in user_time kernel_time e global_time,
 il tempo totale trasccorso dalla prima attivazione del processo.*/
-void sysCallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *wallclock)
+void syscallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *wallclock)
 {
     pcb_t* currentProc = getCurrentProcess();
     *user = currentProc->user_time;
@@ -30,9 +16,9 @@ void sysCallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *w
     *wallclock = (getTime() - currentProc->begin_timestamp);
 }
 
-//SysCall 2. Crea un nuovo processo come figlio del chiamante, 
-//se la sysCall ha successo cpid continene l'indirizzo del pcb_t del processo figlio creato
-int sysCallCreateProcess(state_t* statep, int priority, void **cpid)
+//SysCall 2. Crea un nuovo processo come figlio del chiamante,
+//se la syscall ha successo cpid continene l'indirizzo del pcb_t del processo figlio creato
+int syscallCreateProcess(state_t* statep, int priority, void **cpid)
 {
     pcb_t* childProc = allocPcb();
     //Controllare priority != PRIO_IDLE?
@@ -57,18 +43,19 @@ int sysCallCreateProcess(state_t* statep, int priority, void **cpid)
     return -1;
 }
 
-/*SysCall 3. Termina il processo identificato dal parametro pid 
-e l'albero di processi radicato in esso, se non esiste ritorrna errore. 
+/*SysCall 3. Termina il processo identificato dal parametro pid
+e l'albero di processi radicato in esso, se non esiste ritorrna errore.
 Se pid è NULL termina il processo corrente*/
-int sysCallTerminateProcess(void* pid,int a, int b){
+int syscallTerminateProcess(void* pid)
+{
     if(!pid)
     {
         terminateCurrentProcess();
         schedule();
         return 0;
     }
-    else 
-    {    pcb_t* PCB = (pcb_t*) pid; 
+    else
+    {    pcb_t* PCB = (pcb_t*) pid;
         if(PCB)
         {
             terminateProcess(PCB);
@@ -82,7 +69,7 @@ int sysCallTerminateProcess(void* pid,int a, int b){
 }
 
 //SysCall 4. Operazione di rilascio sul semaforo identificato dal valore di semaddr ::= V() sui semafori
-void sysCallVerhogen(int* semaddr,int a, int b)
+void syscallVerhogen(int* semaddr)
 {
     //disabilitare gli interrupt?
     semd_t* sem = getSemd(semaddr);
@@ -92,19 +79,19 @@ void sysCallVerhogen(int* semaddr,int a, int b)
     }
     else
     {
-    resumeProcess(removeBlocked((semaddr)));
+        resumeProcess(removeBlocked((semaddr)));
     }
 }
 
 //SysCall 5. Operazione di richiesta di un semaforo ::= P() sui semafori
-void sysCallPasseren(int* semaddr, int a, int b)
+void syscallPasseren(int* semaddr)
 {
     //val mem in *semaddr --- semaddr identifica il sem
     if(*semaddr==0)
     {
         pcb_t* process = getCurrentProcess();
         insertBlocked(semaddr, process);
-        removeCurrentProcess();
+        suspendCurrentProcess();
     }
     else
     {
@@ -112,64 +99,67 @@ void sysCallPasseren(int* semaddr, int a, int b)
     }
     
 }
-//SysCall 6. Attiva un operazione di input/output. L'operazione è bloccante 
-void sysCallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
+//SysCall 6. Attiva un operazione di input/output. L'operazione è bloccante
+void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 {
     //Viene definito un device generico
-    devreg_t* dev = (devreg_t*)reg; 
-    //Il processo corrente viene rimosso dalla ready_queue 
-    pcb_t* currentProcess = removeCurrentProcess();
+    devreg_t* dev = (devreg_t*)reg;
+    //Il processo corrente viene rimosso dalla ready_queue
+    pcb_t* currentProcess = suspendCurrentProcess();
+    
+    //Utilizziamo l'indirizzo del device come chiave del semaforo su cui il processo
+    //rimane in attesa del completamento dell'operazione, nel caso di terminali
+    //utilizziamo due indirizzi distinti in per operazioni di trasmissione e ricezione
     int *key = (int*)reg;
+    
     //Identificazione device
     //TODO: gestione errori di identificazione device
     if((unsigned int)reg < DEV_REG_ADDR(IL_TERMINAL,0))
     {
         dev->dtp.command = command;
     }
-    else 
+    else
     {
-    //Identificazione del subdevice nel caso la SYSCALL sia stata effettuata da un terminale
+        //Identificazione del subdevice nel caso la SYSCALL sia stata effettuata da un terminale
         if(subdevice)
         {
             dev->term.recv_command = command;
-            key =(int*) &dev->term.recv_status;
+            key = (int*)&dev->term.recv_status;
         }
         else
         {
             dev->term.transm_command = command;
-            key = (int*) &dev->term.transm_status;
+            key = (int*)&dev->term.transm_status;
         }
     }
-    //Inserimento del processo corrente in coda su di un semaforo 
+    
+    //Inserimento del processo corrente in coda su di un semaforo
     insertBlocked(key, currentProcess);
     schedule();
 }
 
-//SysCall 7. Regstra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap 
-int sysCallSpecPassup(int type, state_t* old_, state_t* new_)
+//SysCall 7. Regstra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap
+int syscallSpecPassup(int type, state_t* old_, state_t* new_)
 {
     pcb_t* current = getCurrentProcess();
     
     //Verifica che i campi relativiall'handler non siano già stati impostati una volta
     if((!current->handler_area[type]->new_area)&&(!current->handler_area[type]->old_area))
-    {    
+    {
         current->handler_area[type]->new_area = new_;
         current->handler_area[type]->old_area = old_;
-        
-        updateToCurrentProcess(old_);
-        updateCurrentProcess(new_);
         return 0;
     }
     else
     {
-        /*SpecPassup per il processo che ha scatenato la SysCall è già stata chiamata con il tipo indicato da type*/ 
+        /*SpecPassup per il processo che ha scatenato la SysCall è già stata chiamata con il tipo indicato da type*/
         terminateCurrentProcess();
         schedule();
         return -1;
     }
 }
 //SysCall 8.
-void sysCallGetPidPPid(void** pid, void** ppid, int a)
+void syscallGetPidPPid(void** pid, void** ppid)
 {
     pcb_t* currentProcess = getCurrentProcess();
     pcb_t* parentProcess = currentProcess->p_parent;
