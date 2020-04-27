@@ -23,6 +23,15 @@ typedef struct handler_areas {
     state_t* old_area;
     state_t* new_area;
 } handler_areas;
+
+enum {
+    SPECPASSUP_TYPE_SYSBK   = 0,
+    SPECPASSUP_TYPE_TLB     = 1,
+    SPECPASSUP_TYPE_PGMTRAP = 2,
+    
+    SPECPASSUP_NUM_TYPES    = 3,
+};
+
 /* Process Control Block (PCB) data structure */
 typedef struct pcb_t {
     /*process queue fields */
@@ -38,12 +47,13 @@ typedef struct pcb_t {
     /* process priority */
     int priority;
     int original_priority;
-    /* keep track of the types already used in the call of pass up syscall during the lifetime of the process*/
-       struct handler_areas* handler_area[3];
 
     /* key of the semaphore on which the process is eventually blocked */
     int *p_semkey;
     
+    /* Areas assigned by the SPECPASSUP syscall */
+    handler_areas specpassup_areas[SPECPASSUP_NUM_TYPES];
+
     /* time record*/
     unsigned int begin_timestamp;
     unsigned int user_time;

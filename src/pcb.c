@@ -52,10 +52,10 @@ pcb_t *allocPcb(void)
     result->user_time = 0;
     result->begin_timestamp = 0;
     
-    //Inizializza i campi di old e new areas dedicati agli handler
+    //Inizializza i campi di old e new areas per la specpassup
     for (int i = 0; i<3; i++){
-        result->handler_area[i]->new_area=NULL;
-        result->handler_area[i]->old_area=NULL;
+        result->specpassup_areas[i].new_area =NULL;
+        result->specpassup_areas[i].old_area =NULL;
     }
     
     return result;

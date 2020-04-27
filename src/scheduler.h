@@ -16,7 +16,6 @@ pcb_t* getCurrentProcess(void);
 unsigned int getTime(void);
 unsigned int getTimeSliceBegin(void);
 void updateTimeSliceBegin(void);
-
 void schedule(void);
 
 #endif

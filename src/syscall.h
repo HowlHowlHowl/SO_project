@@ -7,7 +7,7 @@ int  syscallTerminateProcess(void* pid);
 void syscallVerhogen(int* semaddr);
 void syscallPasseren(int* semaddr);
 void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice);
-int  syscallSpecPassup(int type, state_t* old, state_t* new_);
+int  syscallSpecPassup(int type, state_t* old, state_t* new);
 void syscallGetPidPPid(void** pid, void** ppid);
 
 #endif

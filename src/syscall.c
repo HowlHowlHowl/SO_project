@@ -139,24 +139,29 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 }
 
 //SysCall 7. Regstra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap
-int syscallSpecPassup(int type, state_t* old_, state_t* new_)
+int syscallSpecPassup(int type, state_t* old, state_t* new)
 {
-    pcb_t* current = getCurrentProcess();
+    //Verifica che il type sia nel range consentito
+    if(0 <= type && type < SPECPASSUP_NUM_TYPES)
+    {
+        pcb_t* current = getCurrentProcess();
+        handler_areas* current_areas = &current->specpassup_areas[type];
+        
+        //Verifica che i campi relativiall'handler non siano già stati impostati
+        if(!current_areas->old_area && !current_areas->new_area)
+        {
+            current_areas->old_area = old;
+            current_areas->new_area = new;
+            return 0;
+        }
+    }
+        
+    //In caso di errore terminiamo il processo corrente
+    terminateCurrentProcess();
+    schedule();
     
-    //Verifica che i campi relativiall'handler non siano già stati impostati una volta
-    if((!current->handler_area[type]->new_area)&&(!current->handler_area[type]->old_area))
-    {
-        current->handler_area[type]->new_area = new_;
-        current->handler_area[type]->old_area = old_;
-        return 0;
-    }
-    else
-    {
-        /*SpecPassup per il processo che ha scatenato la SysCall è già stata chiamata con il tipo indicato da type*/
-        terminateCurrentProcess();
-        schedule();
-        return -1;
-    }
+    //Schedule non ritorna, ma il compilatore segnala un warning
+    return -1;
 }
 //SysCall 8.
 void syscallGetPidPPid(void** pid, void** ppid)
