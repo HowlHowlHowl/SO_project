@@ -5,13 +5,13 @@
 
 /*********************************P2TEST.C*******************************
  *
- *	Test program for the Bikaya Kernel: phase 2.
+ *    Test program for the Bikaya Kernel: phase 2.
  *
- *	Produces progress messages on Terminal0.
+ *    Produces progress messages on Terminal0.
  *
- *	This is pretty convoluted code, so good luck!
+ *    This is pretty convoluted code, so good luck!
  *
- *		Aborts as soon as an error is detected.
+ *        Aborts as soon as an error is detected.
  *
  *      Modified by Michael Goldweber on May 15, 2004
  *      Modified by Davide Brini on Nov 26, 2004
@@ -168,7 +168,7 @@ void print(char *msg) {
         /* Wait for I/O completion (SYS8) */
         status = SYSCALL(WAITIO, command, (int)base, FALSE);
 
-        /*		PANIC(); */
+        /*        PANIC(); */
 
         if ((status & TERMSTATMASK) != TRANSM)
             PANIC();
@@ -251,9 +251,9 @@ void test() {
     SYSCALL(PASSEREN, (int)&endp4, 0, 0);
     print("p1 knows p4 ended\n");
 
-    SYSCALL(CREATEPROCESS, (int)&p5state, DEFAULT_PRIORITY, 0); /* start p5		*/
+    SYSCALL(CREATEPROCESS, (int)&p5state, DEFAULT_PRIORITY, 0); /* start p5        */
 
-    SYSCALL(CREATEPROCESS, (int)&p6state, DEFAULT_PRIORITY, 0); /* start p6		*/
+    SYSCALL(CREATEPROCESS, (int)&p6state, DEFAULT_PRIORITY, 0); /* start p6        */
 
     SYSCALL(VERHOGEN, (int)&blkp7, 0, 0);
 

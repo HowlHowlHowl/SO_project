@@ -29,19 +29,19 @@
 
 //Handler per system call e breakpoint
 void handler_sysbk(void)
-{	
-	pcb_t* currentProc = getCurrentProcess();
+{    
+    pcb_t* currentProc = getCurrentProcess();
 
-	//Aggiorna l'user_time al tempo attuale - il tempo di inizio dell'ultima time slice
-	currentProc->user_time += getTime() - getTimeSliceBegin();
-	unsigned int startKernelTime = getTime();
+    //Aggiorna l'user_time al tempo attuale - il tempo di inizio dell'ultima time slice
+    currentProc->user_time += getTime() - getTimeSliceBegin();
+    unsigned int startKernelTime = getTime();
     state_t* old_state = (state_t*)SYSBK_OLDAREA;
     updateCurrentProcess(old_state);
     
     //Vengono definiti i parametri per le SysCall
-	unsigned int p1 = STATE_SYSCALL_P1(old_state);
-	unsigned int p2 = STATE_SYSCALL_P2(old_state);
-	unsigned int p3 = STATE_SYSCALL_P3(old_state);
+    unsigned int p1 = STATE_SYSCALL_P1(old_state);
+    unsigned int p2 = STATE_SYSCALL_P2(old_state);
+    unsigned int p3 = STATE_SYSCALL_P3(old_state);
     
 #ifdef TARGET_UMPS
     //Incrementa il pc di 4 per l'architettura umps
@@ -56,19 +56,19 @@ void handler_sysbk(void)
         unsigned int syscall_number = STATE_SYSCALL_NUMBER(old_state);
         
         switch(syscall_number)
-        {	
-        	//SysCall 1.
-        	case GETCPUTIME:
-        	{
-        	sysCallGetCPUTime((unsigned int*)p1, (unsigned int*)p2, (unsigned int*)p3);
-        		break;
-        	}
-        	
-        	//SysCall 2.
-        	case CREATEPROCESS:
+        {    
+            //SysCall 1.
+            case GETCPUTIME:
             {
-				STATE_SYSCALL_RETURN(old_state) = sysCallCreateProcess((state_t*)p1, (int)p2, (void **)p3);
-        		break;
+            sysCallGetCPUTime((unsigned int*)p1, (unsigned int*)p2, (unsigned int*)p3);
+                break;
+            }
+            
+            //SysCall 2.
+            case CREATEPROCESS:
+            {
+                STATE_SYSCALL_RETURN(old_state) = sysCallCreateProcess((state_t*)p1, (int)p2, (void **)p3);
+                break;
             }
             
             //SysCall 3.
@@ -83,37 +83,37 @@ void handler_sysbk(void)
             //SysCall 4.
             case VERHOGEN:
             {
-            	sysCallVerhogen((int*)p1, 0, 0);
-            	break;
+                sysCallVerhogen((int*)p1, 0, 0);
+                break;
             }
             
             //SysCall 5.
             case PASSEREN:
             {
-            	sysCallPasseren((int*)p1, 0, 0);
-            	break;
+                sysCallPasseren((int*)p1, 0, 0);
+                break;
             }
             
             //SysCall 6.
             case WAITIO:
             {
-            	sysCallDo_IO(p1, (unsigned int*)p2, (int)p3);
-				break;
+                sysCallDo_IO(p1, (unsigned int*)p2, (int)p3);
+                break;
             }
             
             //SysCall 8.
             case GETPID:
             {
-            	sysCallGetPidPPid((void**)p1, (void**)p2, 0);
-            	break;
+                sysCallGetPidPPid((void**)p1, (void**)p2, 0);
+                break;
             }
             //SysCall 7 e default.
-          	default:
-          	{
-            	STATE_SYSCALL_RETURN(old_state) = sysCallSpecPassup((int)p1, (state_t*)p2, (state_t*)p3);
+              default:
+              {
+                STATE_SYSCALL_RETURN(old_state) = sysCallSpecPassup((int)p1, (state_t*)p2, (state_t*)p3);
             
              kprintf("Unexcpeted syscall identifier %u\n", syscall_number);
-        	}
+            }
         }
         
     }

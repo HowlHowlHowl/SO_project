@@ -20,8 +20,8 @@ typedef unsigned int memaddr;
 
 /*Struttura per il controllo della old e new area degli handler per ogni processo*/
 typedef struct handler_areas {
-	state_t* old_area;
-	state_t* new_area;
+    state_t* old_area;
+    state_t* new_area;
 } handler_areas;
 /* Process Control Block (PCB) data structure */
 typedef struct pcb_t {
@@ -39,7 +39,7 @@ typedef struct pcb_t {
     int priority;
     int original_priority;
     /* keep track of the types already used in the call of pass up syscall during the lifetime of the process*/
-   	struct handler_areas* handler_area[3];
+       struct handler_areas* handler_area[3];
 
     /* key of the semaphore on which the process is eventually blocked */
     int *p_semkey;

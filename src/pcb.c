@@ -54,9 +54,9 @@ pcb_t *allocPcb(void)
     
     //Inizializza i campi di old e new areas dedicati agli handler
     for (int i = 0; i<3; i++){
-		result->handler_area[i]->new_area=NULL;
-		result->handler_area[i]->old_area=NULL;
-	}
+        result->handler_area[i]->new_area=NULL;
+        result->handler_area[i]->old_area=NULL;
+    }
     
     return result;
 }

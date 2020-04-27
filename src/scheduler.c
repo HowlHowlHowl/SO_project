@@ -68,10 +68,10 @@ static void removePcbRecursively(pcb_t* p)
     
     }
     pcb_t* pos;
-	list_for_each_entry(pos, &p->p_child, p_sib)
-	{
-		removePcbRecursively(pos);
-	}
+    list_for_each_entry(pos, &p->p_child, p_sib)
+    {
+        removePcbRecursively(pos);
+    }
 }
 
 //Imposta p come processo idle, da mandare in esecuzione quando la coda dei processi e' vuota
@@ -151,24 +151,24 @@ void schedule(void)
 //Rimuove e ritorna il processo corrente
 pcb_t *removeCurrentProcess(void)
 {
-	return outProcQ(&ready_queue,current_process);
+    return outProcQ(&ready_queue,current_process);
 }
 //Ritorna il processo corrente
 pcb_t *getCurrentProcess(void)
 {
-	return current_process;
+    return current_process;
 }
 //Ritorna i primi 32 bit del Time of Day timer
 unsigned int getTime(void)
 {
-	return getTODLO();
+    return getTODLO();
 }
 unsigned int getTimeSliceBegin(void)
 {
-	return current_slice_timestamp;
+    return current_slice_timestamp;
 }
 //Aggiorna il current_slice_timestamp al tempo attuale
 void updateTimeSliceBegin(void) 
 {
-	current_slice_timestamp = getTime();	
+    current_slice_timestamp = getTime();    
 }

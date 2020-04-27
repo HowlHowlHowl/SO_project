@@ -7,15 +7,15 @@
 
 //Popola la new area in area_addr
 void initNewArea(unsigned int area_addr, void (*handler)(void))
-{	
-	state_t* state = (state_t*)area_addr;
+{    
+    state_t* state = (state_t*)area_addr;
     zero_memory(state, sizeof(state_t));
     
     /*Imposta lo status register allo stato seguente:
       interrupts mascherati - Virtual Memory OFF- Kernel Mode ON.
-	  Inoltre imposta:
-	  Il PC all handler dedicato alla new area corrispondente
-	  Lo SP a RAMTOP*/
+      Inoltre imposta:
+      Il PC all handler dedicato alla new area corrispondente
+      Lo SP a RAMTOP*/
 #ifdef TARGET_UARM
     state->sp = RAMTOP;
     state->pc = (unsigned int)handler;
@@ -33,7 +33,7 @@ void initNewArea(unsigned int area_addr, void (*handler)(void))
 
 //Inizializza un pcb e lo ritorna
 pcb_t* initPcbState(unsigned int stack_pointer, void (*func)(void)){
-	pcb_t* p = allocPcb();
+    pcb_t* p = allocPcb();
 
     /*Abilita la kernel mode e l'interrupt line dell'interval timer
       Imposta il PC a puntare l'address della relativa funzione di test*/
