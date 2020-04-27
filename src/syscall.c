@@ -44,7 +44,7 @@ int syscallCreateProcess(state_t* statep, int priority, void **cpid)
 }
 
 /*SysCall 3. Termina il processo identificato dal parametro pid
-e l'albero di processi radicato in esso, se non esiste ritorrna errore.
+e l'albero di processi radicato in esso, se non esiste ritorna errore.
 Se pid è NULL termina il processo corrente*/
 int syscallTerminateProcess(void* pid)
 {
@@ -55,7 +55,8 @@ int syscallTerminateProcess(void* pid)
         return 0;
     }
     else
-    {    pcb_t* PCB = (pcb_t*) pid;
+    {    
+        pcb_t* PCB = (pcb_t*) pid;
         if(PCB)
         {
             terminateProcess(PCB);
@@ -75,11 +76,12 @@ void syscallVerhogen(int* semaddr)
     semd_t* sem = getSemd(semaddr);
     if(emptyProcQ(&sem->s_procQ))
     {
-        *semaddr+=1;
+        *semaddr += 1;
     }
     else
     {
-        resumeProcess(removeBlocked((semaddr)));
+        pcb_t* p = removeBlocked(semaddr);
+        resumeProcess(p);
     }
 }
 
@@ -99,6 +101,29 @@ void syscallPasseren(int* semaddr)
     }
     
 }
+
+//Ritorna 0 se dev non e' un indirizzo valido per un device e 1 altrimenti
+int IsValidDeviceAddress(void* dev)
+{
+    unsigned int start = DEV_REG_ADDR(DEV_IL_START, 0);
+    unsigned int end = DEV_REG_END;
+
+    unsigned int address = (unsigned int)dev;
+    
+    //Controlla che sia contenuto nell'area dei device
+    if(start <= address && address < end)
+    {
+        //Controlla che sia allineato a un device in modo corretto
+        address = ptr - start;
+        if((address & 0xF) == 0)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 //SysCall 6. Attiva un operazione di input/output. L'operazione è bloccante
 void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 {
@@ -113,7 +138,15 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
     int *key = (int*)reg;
     
     //Identificazione device
-    //TODO: gestione errori di identificazione device
+    if(!IsValidDeviceAddress(dev))
+    {
+        kprintf("Process terminated because of invalid reg passed to syscallDo_IO: 0x%x\n", reg);
+        
+        //In caso di errore terminiamo il processo corrente
+        terminateCurrentProcess();
+        schedule();
+    }
+    
     if((unsigned int)reg < DEV_REG_ADDR(IL_TERMINAL,0))
     {
         dev->dtp.command = command;
