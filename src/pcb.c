@@ -46,12 +46,18 @@ pcb_t *allocPcb(void)
     result->priority = 0;
     result->original_priority = 0;
     result->p_semkey = NULL;
+    
+    //Inizializza i campi "timer" 
     result->kernel_time = 0;
     result->user_time = 0;
     result->begin_timestamp = 0;
-    result->passup_type_check[0] = 0;
-    result->passup_type_check[1] = 0;
-    result->passup_type_check[2] = 0;
+    
+    //Inizializza i campi di old e new areas dedicati agli handler
+    for (int i = 0; i<3; i++){
+		result->handler_area[i]->new_area=NULL;
+		result->handler_area[i]->old_area=NULL;
+	}
+    
     return result;
 }
 

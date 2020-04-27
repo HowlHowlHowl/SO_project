@@ -146,31 +146,17 @@ void sysCallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 }
 
 //SysCall 7. Regstra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap 
-int sysCallSpecPassup(int type, state_t* old, state_t* new_)
+int sysCallSpecPassup(int type, state_t* old_, state_t* new_)
 {
 	pcb_t* current = getCurrentProcess();
-	state_t* currentState = &current->p_s;
-	//Se passup_type_check[type] == 0, si procede, altrimenti nasce un errore 
-	if(!current->passup_type_check[type])
-	{
-	/*SpecPassup non è ancora stata chiamata per il tipo contenuto in type => si può procedere con l'esecuzione della SysCall*/ 
-		switch(type)
-		{
-			case 0:
-			{
-				PC(currentState) = (unsigned int) handler_sysbk;
-			}
-			case 1:
-			{
-				PC(currentState) = (unsigned int) handler_pgmtrap;
-			}
-			case 2:
-			{
-				PC(currentState) = (unsigned int) handler_tlb;
-			}
-		}
-		current->passup_type_check[type]=1;
-		updateToCurrentProcess(old);
+	
+	//Verifica che i campi relativiall'handler non siano già stati impostati una volta
+	if((!current->handler_area[type]->new_area)&&(!current->handler_area[type]->old_area))
+	{	
+		current->handler_area[type]->new_area = new_;
+		current->handler_area[type]->old_area = old_;
+		
+		updateToCurrentProcess(old_);
 		updateCurrentProcess(new_);
 		return 0;
 	}

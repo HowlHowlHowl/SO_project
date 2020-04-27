@@ -35,8 +35,8 @@ void handler_sysbk(void)
 	//Aggiorna l'user_time al tempo attuale - il tempo di inizio dell'ultima time slice
 	currentProc->user_time += getTime() - getTimeSliceBegin();
 	unsigned int startKernelTime = getTime();
-	updateCurrentProcess(old_state);
     state_t* old_state = (state_t*)SYSBK_OLDAREA;
+    updateCurrentProcess(old_state);
     
     //Vengono definiti i parametri per le SysCall
 	unsigned int p1 = STATE_SYSCALL_P1(old_state);
