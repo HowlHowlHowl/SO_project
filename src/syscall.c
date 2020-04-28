@@ -3,6 +3,7 @@
 #include "asl.h"
 #include "syscall.h"
 #include "handler.h"
+#include "kprintf.h"
 
 /*SysCall 1.
 Quando invocata restituisce il tempo di esecuzione del processo chiamante
@@ -21,7 +22,7 @@ void syscallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *w
 int syscallCreateProcess(state_t* statep, int priority, void **cpid)
 {
     pcb_t* childProc = allocPcb();
-    //Controllare priority != PRIO_IDLE?
+
     if(childProc)
     {
         pcb_t* currentProc = getCurrentProcess();
@@ -30,16 +31,19 @@ int syscallCreateProcess(state_t* statep, int priority, void **cpid)
         {
             *cpid = childProc;
         }
-        childProc->priority = priority;
         
         state_t* status = &childProc->p_s;
+        
         STATUS(status) = STATUS(statep);
         PC(status) = PC(statep);
         SP(status) = SP(statep);
+        
         addProcess(childProc,priority);
         return 0;
     }
-    //Non c'è il ramo else così il compilatore è contento
+    
+    kprintf("Create process failed\n");
+    
     return -1;
 }
 
@@ -48,39 +52,32 @@ e l'albero di processi radicato in esso, se non esiste ritorna errore.
 Se pid è NULL termina il processo corrente*/
 int syscallTerminateProcess(void* pid)
 {
-    if(!pid)
+    
+    pcb_t* p = (pcb_t*)pid;
+    if(!p)
     {
+        kprintf("Process %x committing suicide\n", getCurrentProcess());
         terminateCurrentProcess();
         schedule();
         return 0;
     }
     else
     {    
-        pcb_t* PCB = (pcb_t*) pid;
-        if(PCB)
-        {
-            terminateProcess(PCB);
-            return 0;
-        }
-        else
-        {
-            return -1;
-        }
+        kprintf("Syscall terminate process on: %x\n", p);
+        return terminateProcess(p);
     }
 }
 
 //SysCall 4. Operazione di rilascio sul semaforo identificato dal valore di semaddr ::= V() sui semafori
 void syscallVerhogen(int* semaddr)
 {
-    //disabilitare gli interrupt?
-    semd_t* sem = getSemd(semaddr);
-    if(emptyProcQ(&sem->s_procQ))
+    pcb_t* p = removeBlocked(semaddr);
+    if(!p)
     {
         *semaddr += 1;
     }
     else
     {
-        pcb_t* p = removeBlocked(semaddr);
         resumeProcess(p);
     }
 }
@@ -88,21 +85,20 @@ void syscallVerhogen(int* semaddr)
 //SysCall 5. Operazione di richiesta di un semaforo ::= P() sui semafori
 void syscallPasseren(int* semaddr)
 {
-    //val mem in *semaddr --- semaddr identifica il sem
-    if(*semaddr==0)
+    if(*semaddr == 0)
     {
-        pcb_t* process = getCurrentProcess();
-        insertBlocked(semaddr, process);
-        suspendCurrentProcess();
+        pcb_t* p = suspendCurrentProcess();
+        insertBlocked(semaddr, p);
+        schedule();
     }
     else
     {
-        *semaddr-=1;
+        *semaddr -= 1;
     }
     
 }
 
-//Ritorna 0 se dev non e' un indirizzo valido per un device e 1 altrimenti
+//Ritorna 1 se dev e' un indirizzo valido per un device e 0 altrimenti
 int IsValidDeviceAddress(void* dev)
 {
     unsigned int start = DEV_REG_ADDR(DEV_IL_START, 0);
@@ -114,14 +110,14 @@ int IsValidDeviceAddress(void* dev)
     if(start <= address && address < end)
     {
         //Controlla che sia allineato a un device in modo corretto
-        address = ptr - start;
+        address = address - start;
         if((address & 0xF) == 0)
         {
-            return true;
+            return 1;
         }
     }
     
-    return false;
+    return 0;
 }
 
 //SysCall 6. Attiva un operazione di input/output. L'operazione è bloccante
@@ -189,6 +185,7 @@ int syscallSpecPassup(int type, state_t* old, state_t* new)
         }
     }
         
+    kprintf("Process terminated due to error registering specpassup areas\n");
     //In caso di errore terminiamo il processo corrente
     terminateCurrentProcess();
     schedule();

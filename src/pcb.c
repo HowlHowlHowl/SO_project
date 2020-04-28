@@ -174,7 +174,11 @@ pcb_t *removeChild(pcb_t *p)
     if(first_child)
     {
         list_del(first_child);
-        return container_of(first_child, pcb_t, p_sib);
+        
+        pcb_t* child = container_of(first_child, pcb_t, p_sib);
+        child->p_parent = 0;
+        
+        return child;
     }
     else
     {

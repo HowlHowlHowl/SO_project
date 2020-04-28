@@ -25,6 +25,8 @@
 #define DEV_TRCV_S_CHARRECV 5
 #define DEV_TTRS_S_CHARTRSM 5
 
+#define getTODLO() (*(unsigned int *)BUS_REG_TOD_LO)
+
 //Macro per la gestione dei registri dello stato in modo analogo per entrambe le architetture
 #define STATE_EXCCODE(s) CAUSE_GET_EXCCODE((s)->cause)
 #define STATE_SYSCALL_NUMBER(s) (s)->reg_a0

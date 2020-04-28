@@ -2,40 +2,17 @@
 #include "system.h"
 #include "kprintf.h"
 #include "utils.h"
-
-//Macro per la gestione dei registri dello stato in modo analogo per entrambe le architetture
-
-#ifdef TARGET_UMPS
-#define STATE_EXCCODE(s) CAUSE_GET_EXCCODE((s)->cause)
-#define STATE_SYSCALL_NUMBER(s) (s)->reg_a0
-#define STATE_SYSCALL_P1(s) (s)->reg_a1
-#define STATE_SYSCALL_P2(s) (s)->reg_a2
-#define STATE_SYSCALL_P3(s) (s)->reg_a3
-#define STATE_SYSCALL_RETURN(s) (s)->reg_v0
-#define STATE_CAUSE(s) (s)->cause
-#define getTODLO() (*(unsigned int *)BUS_TODLOW)
-#define BUS_TODLOW 0x1000001c
-
-#define CAUSE_IP_GET(cause, n) ((cause) & (CAUSE_IP(n)))
-#endif
-//Definita in modo analogo a uarm
-#ifdef TARGET_UARM
-#define STATE_EXCCODE(s) CAUSE_EXCCODE_GET((s)->CP15_Cause)
-#define STATE_SYSCALL_NUMBER(s) (s)->a1
-#define STATE_SYSCALL_P1(s) (s)->a2
-#define STATE_SYSCALL_P2(s) (s)->a3
-#define STATE_SYSCALL_P3(s) (s)->a4
-#define STATE_SYSCALL_RETURN(s) (s)->a1
-#define STATE_CAUSE(s) (s)->CP15_Cause
-#endif
+#include "asl.h"
 
 #define TIME_SLICE_DURATION_MS 3
-//time-stamp del tempo in cui viene passato il controllo al processo
-static unsigned int current_slice_timestamp;
 
 static struct list_head ready_queue;
 static pcb_t* current_process;
 static pcb_t* idle_process;
+
+//time-stamp del tempo in cui viene passato il controllo al processo
+static unsigned int current_slice_timestamp;
+
 
 // Inizializza la coda dei processi
 void initScheduler(void)
@@ -46,26 +23,16 @@ void initScheduler(void)
 // Aggiunge un processo alla coda con la priorita' specificata
 void addProcess(pcb_t* p, int priority)
 {
+    if(!p)
+    {
+        kprintf("Calling add process with NULL p");
+        PANIC();
+    }
+    
     p->priority = priority;
     p->original_priority = priority;
     p->begin_timestamp = getTime();
     insertProcQ(&ready_queue, p);
-}
-
-// Rimuove il processo p e l'albero di processi radicato in esso in modo ricorsivo
-static void removePcbRecursively(pcb_t* p)
-{
-    pcb_t* removed = outProcQ(&ready_queue, p);
-    if(removed)
-    {
-        freePcb(removed);
-    
-    }
-    pcb_t* pos;
-    list_for_each_entry(pos, &p->p_child, p_sib)
-    {
-        removePcbRecursively(pos);
-    }
 }
 
 //Imposta p come processo idle, da mandare in esecuzione quando la coda dei processi e' vuota
@@ -81,28 +48,76 @@ void updateCurrentProcess(state_t* state)
 }
 
 
+// Rimuove il processo p e l'albero di processi radicato in esso in modo ricorsivo
+// ritorna 0 se il processo esiste, -1 altrimenti
+static int removePcbRecursively(pcb_t* p, int terminate_current)
+{
+    //Rimuove il processo dalla ready queue
+    pcb_t* removed = outProcQ(&ready_queue, p);
+    
+    //Se non si trova nella ready queue lo rimuoviamo dalla coda del semaforo su cui
+    //si trova in attesa
+    if(!removed)
+    {
+        removed = outBlocked(p);
+    }
+    
+    if(!removed)
+    {
+        kprintf("Attempting to remove process %x not in ready queue and not waiting on semaphore queue\n", p);
+        return -1;
+    }
+    
+    if(removed == current_process && !terminate_current)
+    {
+        kprintf("Attempting to terminate current_process, aes\n");
+        return -1;
+    }
+    
+    while(!emptyChild(p))
+    {
+        pcb_t* child = removeChild(p);
+        if(removePcbRecursively(child, terminate_current) == -1)
+        {
+            kprintf("^ Was a child\n");
+        }
+    }
+    
+    outChild(p);
+    freePcb(p);
+    
+    return 0;
+}
+
 //Termina il processo corrente e l'albero radicato in esso
 void terminateCurrentProcess(void)
 {
-    removePcbRecursively(current_process);
+    removePcbRecursively(current_process, 1);
 }
 
 //Termina il processo passato come parametro e l'albero radicato in esso
-void terminateProcess(pcb_t* p)
+//ritorna 0 se il processo esiste, -1 altrimenti
+int terminateProcess(pcb_t* p)
 {
-    removePcbRecursively(p);
+    return removePcbRecursively(p, 0);
 }
 
 // Inserisce p nella coda, la priorita' di p e' gia' stata impostata in precedenza
 void resumeProcess(pcb_t* p)
 {
+    if(!p)
+    {
+        kprintf("Calling resume process with NULL p");
+        PANIC();
+    }
+    
     insertProcQ(&ready_queue, p);
 }
 
 //Rimuove dalla ready queue e ritorna il processo corrente
 pcb_t* suspendCurrentProcess(void)
 {
-    return outProcQ(&ready_queue,current_process);
+    return outProcQ(&ready_queue, current_process);
 }
 
 //Ritorna il processo corrente
@@ -117,6 +132,7 @@ unsigned int getTime(void)
     return getTODLO();
 }
 
+//Ritorna il timestamp a cui e' cominciato il time slice corrente
 unsigned int getTimeSliceBegin(void)
 {
     return current_slice_timestamp;
@@ -141,6 +157,12 @@ static void resetIntervalTimer(void)
 //Imposta p come processo corrente e gli passa il controllo
 static void switchToProcess(pcb_t* p)
 {
+    if(!p)
+    {
+        kprintf("Calling switchToProcess with NULL p");
+        PANIC();
+    }
+    
     resetIntervalTimer();
     current_process = p;
     updateTimeSliceBegin();

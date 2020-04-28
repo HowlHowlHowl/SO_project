@@ -1,9 +1,12 @@
 #include "system.h"
 #include "pcb.h"
+#include "asl.h"
 #include "kprintf.h"
 #include "scheduler.h"
 #include "utils.h"
 #include "handler.h"
+
+void test();
 
 //Popola la new area in area_addr
 void initNewArea(unsigned int area_addr, void (*handler)(void))
@@ -56,7 +59,6 @@ pcb_t* initPcbState(unsigned int stack_pointer, void (*func)(void)){
 
 void idle_func(void)
 {
-    kprintf("Begin idle process\n");
     while(1)
     {
         WAIT();
@@ -66,6 +68,7 @@ void idle_func(void)
 int main()
 {
     initPcbs();
+    initASL();
     
     initScheduler();
     
@@ -75,8 +78,11 @@ int main()
     initNewArea(TLB_NEWAREA,     handler_tlb);
     initNewArea(INT_NEWAREA,     handler_int);
     
-    //Aggiunta del processo idle  
-    pcb_t* idle = initPcbState(RAMTOP - FRAME_SIZE * 4, idle_func);
+    pcb_t* p = initPcbState(RAMTOP - FRAME_SIZE, test);
+    addProcess(p, 1);
+    
+    //Aggiunta del processo idle 
+    pcb_t* idle = initPcbState(RAMTOP, idle_func);
     setIdleProcess(idle);
     
     /*Avvio scheduler*/

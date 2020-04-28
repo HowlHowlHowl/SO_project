@@ -7,6 +7,7 @@
 #include "handler.h"
 
 #define CMD_ACK 1
+#define TERM_STATUS_MASK 0xFF
 
 // Trova il processo in attesa sulla linea, device e subdevice specificati,
 // imposta il corretto valore di ritorno dell syscall di IO e reinserisce il processo
@@ -52,13 +53,15 @@ void checkDeviceInterrupts(unsigned int cause)
                     //Gestisci i terminali separatamente dato che sono composti da 2 subdevice
                     if(line == IL_TERMINAL)
                     {
-                        if((status = rx_status(&dev->term)) == DEV_TRCV_S_CHARRECV)
+                        status = dev->term.recv_status;
+                        if((status & TERM_STATUS_MASK) == DEV_TRCV_S_CHARRECV)
                         {
                             dev->term.recv_command = CMD_ACK;
                             wakeUpProcess((int*)&dev->term.recv_status, status);
                         }
                         
-                        if((status = tx_status(&dev->term)) == DEV_TTRS_S_CHARTRSM)
+                        status = dev->term.transm_status;
+                        if((status & TERM_STATUS_MASK) == DEV_TTRS_S_CHARTRSM)
                         {
                             dev->term.transm_command = CMD_ACK;
                             wakeUpProcess((int*)&dev->term.transm_status, status);

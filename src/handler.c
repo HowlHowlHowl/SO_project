@@ -4,6 +4,35 @@
 #include "scheduler.h"
 #include "syscall.h"
 #include "interrupt.h"
+#include "utils.h"
+
+// Chiama gli handler registrati dalla specpassup per il processo corrente,
+// termina il processo in caso non siano stati registrati.
+static void callSpecpassupHandler(state_t* state, int type)
+{
+    pcb_t* p = getCurrentProcess();
+    if(!p)
+    {
+        kprintf("Current process is NULL!\n");
+        PANIC();
+    }
+    
+    handler_areas* areas = &p->specpassup_areas[type];
+    if(areas->old_area && areas->new_area)
+    {
+        //Salva lo stato corrente nella old area e passa il controlla alla new area
+        copy_memory(areas->old_area, state, sizeof(state_t));
+        LDST(areas->new_area);
+    }
+    else
+    {
+        kprintf("Process %x terminated due to call to non-registered specpassup areas, type: %d\n", p, type);
+        
+        //In caso di errore termina il processo
+        terminateCurrentProcess();
+        schedule();
+    }
+}
 
 //Handler per system call e breakpoint
 void handler_sysbk(void)
@@ -15,24 +44,27 @@ void handler_sysbk(void)
     unsigned int startKernelTime = getTime();
      
     state_t* old_state = (state_t*)SYSBK_OLDAREA;
-    updateCurrentProcess(old_state);
-    
-    //Vengono definiti i parametri per le SysCall
-    unsigned int p1 = STATE_SYSCALL_P1(old_state);
-    unsigned int p2 = STATE_SYSCALL_P2(old_state);
-    unsigned int p3 = STATE_SYSCALL_P3(old_state);
-    
 #ifdef TARGET_UMPS
     //Incrementa il pc di 4 per l'architettura umps
     old_state->pc_epc += 4;
 #endif
+    
+    updateCurrentProcess(old_state);
+    
     
     int exc_code = STATE_EXCCODE(old_state);
     
     //Gestisce il caso di una syscall
     if(exc_code == EXC_SYSCALL)
     {
+        //Numero della syscall
         unsigned int syscall_number = STATE_SYSCALL_NUMBER(old_state);
+        
+        //Parametri della syscall
+        unsigned int p1 = STATE_SYSCALL_P1(old_state);
+        unsigned int p2 = STATE_SYSCALL_P2(old_state);
+        unsigned int p3 = STATE_SYSCALL_P3(old_state);
+        
         
         switch(syscall_number)
         {
@@ -42,18 +74,25 @@ void handler_sysbk(void)
             case VERHOGEN:         syscallVerhogen((int*)p1);                                                                  break;
             case PASSEREN:         syscallPasseren((int*)p1);                                                                  break;
             case WAITIO:           syscallDo_IO(p1, (unsigned int*)p2, (int)p3);                                               break;
+            case SPECPASSUP:       STATE_SYSCALL_RETURN(old_state) = syscallSpecPassup((int)p1, (state_t*)p2, (state_t*)p3);   break;
             case GETPID:           syscallGetPidPPid((void**)p1, (void**)p2);                                                  break;
             
             default:
             {
-                //TODO: Chiama lo specupassup handler invece di sta robba
-                kprintf("Unexcpeted syscall identifier %u\n", syscall_number);
+                kprintf("User syscall number: %u\n", syscall_number);
+                callSpecpassupHandler(old_state, SPECPASSUP_TYPE_SYSBK);
             } break;
         }
     }
+    else
+    {
+        kprintf("Breakpoint\n");
+        
+        //In caso di breakpoint chiama gli handler registrati dalla specpassup
+        callSpecpassupHandler(old_state, SPECPASSUP_TYPE_SYSBK);
+    }
     
-    //TODO: pgmtrap if exc_code == user_mode for priviliged request
-    currentProc->kernel_time += startKernelTime-getTime();
+    currentProc->kernel_time += startKernelTime - getTime();
     updateTimeSliceBegin();
     
     LDST(old_state);
@@ -64,7 +103,8 @@ void handler_pgmtrap(void)
 {
     state_t* old_state = (state_t*)PGMTRAP_OLDAREA;
     
-    kprintf("Unexpected pgmtrap exception\n");
+    //Chiama gli handler registrati dalla specpassup
+    callSpecpassupHandler(old_state, SPECPASSUP_TYPE_PGMTRAP);
     
     LDST(old_state);
 }
@@ -74,7 +114,8 @@ void handler_tlb(void)
 {
     state_t* old_state = (state_t*)TLB_OLDAREA;
     
-    kprintf("Unexpected tlb exception\n");
+    //Chiama gli handler registrati dalla specpassup
+    callSpecpassupHandler(old_state, SPECPASSUP_TYPE_TLB);
     
     LDST(old_state);
 }

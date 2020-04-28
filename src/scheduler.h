@@ -5,10 +5,9 @@
 
 void initScheduler(void);
 void addProcess(pcb_t* p, int priority);
-void terminateProcess(pcb_t* p);
 void setIdleProcess(pcb_t* p);
 void updateCurrentProcess(state_t* state);
-void updateToCurrentProcess(state_t* state);
+int  terminateProcess(pcb_t* p);
 void terminateCurrentProcess(void);
 void resumeProcess(pcb_t* p);
 pcb_t* suspendCurrentProcess(void);
