@@ -2,7 +2,7 @@
 #define INTERRUPT_H
 
 void wakeUpProcess(int* key, unsigned int status);
-void checkDeviceInterrupts(unsigned int cause);
+int  checkDeviceInterrupts(unsigned int cause);
 
 #endif
 

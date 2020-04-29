@@ -62,7 +62,7 @@ static semd_t *allocSemd(void)
 void freeSemd(semd_t *toDel) 
 {
     list_del(&toDel->s_next);
-    list_add(&toDel->s_next,&semdFreeList);
+    list_add(&toDel->s_next, &semdFreeList);
 }
 
 /*Inserisce un pcb p nella coda di processi associata al semaforo con chiave key*/

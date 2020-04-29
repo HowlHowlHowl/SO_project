@@ -53,9 +53,9 @@ pcb_t *allocPcb(void)
     result->begin_timestamp = 0;
     
     //Inizializza i campi di old e new areas per la specpassup
-    for (int i = 0; i<3; i++){
-        result->specpassup_areas[i].new_area =NULL;
-        result->specpassup_areas[i].old_area =NULL;
+    for (int i = 0; i < SPECPASSUP_NUM_TYPES; i++){
+        result->specpassup_areas[i].new_area = NULL;
+        result->specpassup_areas[i].old_area = NULL;
     }
     
     return result;

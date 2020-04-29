@@ -20,6 +20,7 @@ static void callSpecpassupHandler(state_t* state, int type)
     handler_areas* areas = &p->specpassup_areas[type];
     if(areas->old_area && areas->new_area)
     {
+        kprintf("Process %x calling registered specpassuap area of type %d: new = %x old = %x\n", p, type, areas->old_area, areas->new_area);
         //Salva lo stato corrente nella old area e passa il controlla alla new area
         copy_memory(areas->old_area, state, sizeof(state_t));
         LDST(areas->new_area);
@@ -37,20 +38,22 @@ static void callSpecpassupHandler(state_t* state, int type)
 //Handler per system call e breakpoint
 void handler_sysbk(void)
 {
-    pcb_t* currentProc = getCurrentProcess();
+    pcb_t* process = getCurrentProcess();
+    if(!process) 
+    {
+        kprintf("syscall with no current process!\n");
+        PANIC();
+    }
     
     //Aggiorna l'user_time al tempo attuale - il tempo di inizio dell'ultima time slice
-    currentProc->user_time += getTime() - getTimeSliceBegin();
-    unsigned int startKernelTime = getTime();
+    process->user_time += getTime() - getTimeSliceBegin();
+    unsigned int start_kernel_time = getTime();
      
     state_t* old_state = (state_t*)SYSBK_OLDAREA;
 #ifdef TARGET_UMPS
     //Incrementa il pc di 4 per l'architettura umps
-    old_state->pc_epc += 4;
+    PC(old_state) += 4;
 #endif
-    
-    updateCurrentProcess(old_state);
-    
     
     int exc_code = STATE_EXCCODE(old_state);
     
@@ -65,6 +68,7 @@ void handler_sysbk(void)
         unsigned int p2 = STATE_SYSCALL_P2(old_state);
         unsigned int p3 = STATE_SYSCALL_P3(old_state);
         
+//        kprintf("Syscall from process %x with number: %u\n", process, syscall_number);
         
         switch(syscall_number)
         {
@@ -79,7 +83,6 @@ void handler_sysbk(void)
             
             default:
             {
-                kprintf("User syscall number: %u\n", syscall_number);
                 callSpecpassupHandler(old_state, SPECPASSUP_TYPE_SYSBK);
             } break;
         }
@@ -92,10 +95,21 @@ void handler_sysbk(void)
         callSpecpassupHandler(old_state, SPECPASSUP_TYPE_SYSBK);
     }
     
-    currentProc->kernel_time += startKernelTime - getTime();
-    updateTimeSliceBegin();
+    process->kernel_time += getTime() - start_kernel_time;
     
-    LDST(old_state);
+    if(getCurrentProcess())
+    {
+        //Se il processo corrente non e' stato sospeso o terminato
+        //prosegue l'esecuzione
+        updateTimeSliceBegin();
+        LDST(old_state);
+    }
+    else
+    {
+        //Altrimenti aggiorniamo il suo stato e scheduliamo il prossimo processo
+        copy_memory(&process->p_s, old_state, sizeof(state_t));
+        schedule();
+    }
 }
 
 //Handler stub per program traps
@@ -105,8 +119,6 @@ void handler_pgmtrap(void)
     
     //Chiama gli handler registrati dalla specpassup
     callSpecpassupHandler(old_state, SPECPASSUP_TYPE_PGMTRAP);
-    
-    LDST(old_state);
 }
 
 //Handler stub per la gestione del TLB
@@ -116,15 +128,17 @@ void handler_tlb(void)
     
     //Chiama gli handler registrati dalla specpassup
     callSpecpassupHandler(old_state, SPECPASSUP_TYPE_TLB);
-    
-    LDST(old_state);
 }
 
 //Handler per la gestione degli interrupt
 void handler_int(void)
 {
     state_t* old_state = (state_t*)INT_OLDAREA;
-    
+    if(getCurrentProcess() == NULL)
+    {
+        kprintf("Interrupt with no current process!\n");
+        PANIC();
+    }
 #ifdef TARGET_UARM
     //Come specificato al capitolo 2.5.3 del manuale di uArm il pc va decrementato di 4
     //in seguito ad un interrupt
@@ -133,25 +147,36 @@ void handler_int(void)
     
     unsigned int cause = STATE_CAUSE(old_state);
     
-    checkDeviceInterrupts(cause);
+    int any_resumed = checkDeviceInterrupts(cause);
     
     if(CAUSE_IP_GET(cause, IL_TIMER))
     {
         //Se il time slice e' terminato in seguito a un interrupt dell'interval timer
         //aggiorna lo stato del processo corrente e reinvoca lo scheduler,
-        pcb_t* currentProc = getCurrentProcess();
+        pcb_t* current_proc = getCurrentProcess();
         updateCurrentProcess(old_state);
         
         //Il time slice in user mode termina definitivamente e l'user time viene aggiornato
-        currentProc->user_time += getTimeSliceBegin() - getTime();
+        current_proc->user_time += getTimeSliceBegin() - getTime();
         
         //la chiamata schedule() non ritorna
         schedule();
     }
     else
     {
-        //Altrimenti riprendi l'esecuzione del processo precedente
-        LDST(old_state);
+        if(any_resumed && isIdleProcessCurrent())
+        {
+            //Se il processo corrente e' l'idle e ci sono processi svegliati in seguito
+            //a un interrupt interrompiamo il processo corrente e passiamo il controllo
+            //a quello di priorita' piu' alta.
+            updateCurrentProcess(old_state);
+            schedule();
+        }
+        else
+        {
+            //Altrimenti riprendi l'esecuzione del processo precedente
+            LDST(old_state);
+        }
     }
 }
 

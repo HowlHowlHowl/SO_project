@@ -82,10 +82,11 @@ int main()
     addProcess(p, 1);
     
     //Aggiunta del processo idle 
-    pcb_t* idle = initPcbState(RAMTOP, idle_func);
+    pcb_t* idle = initPcbState(RAMTOP - FRAME_SIZE * 50, idle_func);
     setIdleProcess(idle);
+    kprintf("Idle process is %x\n", idle);
     
-    /*Avvio scheduler*/
+    //Avvio scheduler
     schedule();
     
     return 1;

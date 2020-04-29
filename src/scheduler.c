@@ -23,6 +23,7 @@ void initScheduler(void)
 // Aggiunge un processo alla coda con la priorita' specificata
 void addProcess(pcb_t* p, int priority)
 {
+    kprintf("Process added %x\n", p);
     if(!p)
     {
         kprintf("Calling add process with NULL p");
@@ -39,6 +40,11 @@ void addProcess(pcb_t* p, int priority)
 void setIdleProcess(pcb_t* p)
 {
     idle_process = p;
+}
+
+int isIdleProcessCurrent(void)
+{
+    return current_process == idle_process;
 }
 
 //Aggiorna lo stato del processo corrente allo stato passato come parametro
@@ -82,9 +88,18 @@ static int removePcbRecursively(pcb_t* p, int terminate_current)
             kprintf("^ Was a child\n");
         }
     }
-    
     outChild(p);
-    freePcb(p);
+    
+    //Se abbiamo rimosso il processo corrente lo settiamo a NULL
+    if(p == current_process)
+    {
+        current_process = NULL;
+    }
+    
+    kprintf("Process terminated %x\n", p);
+    if(p->p_semkey) kprintf("Holy we removing process on semaphore\n");
+    
+//    freePcb(p);
     
     return 0;
 }
@@ -117,7 +132,10 @@ void resumeProcess(pcb_t* p)
 //Rimuove dalla ready queue e ritorna il processo corrente
 pcb_t* suspendCurrentProcess(void)
 {
-    return outProcQ(&ready_queue, current_process);
+    pcb_t* p = outProcQ(&ready_queue, current_process);
+    current_process = NULL;
+    
+    return p;
 }
 
 //Ritorna il processo corrente
@@ -188,7 +206,6 @@ void schedule(void)
 
         //Reinserisce il processo scelto nella coda
         insertProcQ(&ready_queue, first);
-        
         switchToProcess(first);
     }
     
