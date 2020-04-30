@@ -15,6 +15,7 @@ Solo i seguenti format sono supportati:
   %b stampa un intero unsigned in 32 cifre binarie, con uno spazio ogni 8 cifre
 */
 
+#if 1
 void kprintf(char* fmt, ...)
 {
     termreg_t* term = TERMINAL7;
@@ -165,3 +166,11 @@ void kprintf(char* fmt, ...)
     
     va_end(va);
 }
+#else
+
+void kprintf(char* fmt, ...)
+{
+    
+}
+
+#endif

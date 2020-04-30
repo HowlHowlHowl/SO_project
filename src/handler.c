@@ -20,14 +20,14 @@ static void callSpecpassupHandler(state_t* state, int type)
     handler_areas* areas = &p->specpassup_areas[type];
     if(areas->old_area && areas->new_area)
     {
-        kprintf("Process %x calling registered specpassuap area of type %d: new = %x old = %x\n", p, type, areas->old_area, areas->new_area);
+//        kprintf("Process %x calling registered specpassuap area of type %d: new = %x old = %x\n", p, type, areas->old_area, areas->new_area);
         //Salva lo stato corrente nella old area e passa il controlla alla new area
         copy_memory(areas->old_area, state, sizeof(state_t));
         LDST(areas->new_area);
     }
     else
     {
-        kprintf("Process %x terminated due to call to non-registered specpassup areas, type: %d\n", p, type);
+//        kprintf("Process %x terminated due to call to non-registered specpassup areas, type: %d\n", p, type);
         
         //In caso di errore termina il processo
         terminateCurrentProcess();
@@ -57,18 +57,17 @@ void handler_sysbk(void)
     
     int exc_code = STATE_EXCCODE(old_state);
     
+    
     //Gestisce il caso di una syscall
     if(exc_code == EXC_SYSCALL)
     {
-        //Numero della syscall
-        unsigned int syscall_number = STATE_SYSCALL_NUMBER(old_state);
-        
         //Parametri della syscall
         unsigned int p1 = STATE_SYSCALL_P1(old_state);
         unsigned int p2 = STATE_SYSCALL_P2(old_state);
         unsigned int p3 = STATE_SYSCALL_P3(old_state);
         
-//        kprintf("Syscall from process %x with number: %u\n", process, syscall_number);
+        //Numero della syscall
+        unsigned int syscall_number = STATE_SYSCALL_NUMBER(old_state);
         
         switch(syscall_number)
         {
@@ -89,8 +88,6 @@ void handler_sysbk(void)
     }
     else
     {
-        kprintf("Breakpoint\n");
-        
         //In caso di breakpoint chiama gli handler registrati dalla specpassup
         callSpecpassupHandler(old_state, SPECPASSUP_TYPE_SYSBK);
     }
@@ -134,11 +131,6 @@ void handler_tlb(void)
 void handler_int(void)
 {
     state_t* old_state = (state_t*)INT_OLDAREA;
-    if(getCurrentProcess() == NULL)
-    {
-        kprintf("Interrupt with no current process!\n");
-        PANIC();
-    }
 #ifdef TARGET_UARM
     //Come specificato al capitolo 2.5.3 del manuale di uArm il pc va decrementato di 4
     //in seguito ad un interrupt

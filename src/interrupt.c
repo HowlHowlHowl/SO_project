@@ -9,37 +9,49 @@
 #define CMD_ACK 1
 #define TERM_STATUS_MASK 0xFF
 
+//extern int debug_count;
 // Trova il processo in attesa sulla linea, device e subdevice specificati,
 // imposta il corretto valore di ritorno dell syscall di IO e reinserisce il processo
-// nella ready queue. 
+// nella ready queue.
 void wakeUpProcess(int* key, unsigned int status)
 {
 //    kprintf("Waking up process waiting of device %x", key);
     
     pcb_t* p = removeBlocked(key);
+    if(p == getCurrentProcess())
+    {
+        kprintf("Error: interrupt on current process?\n");
+        PANIC();
+    }
+    
     if(!p)
     {
         kprintf("Error: Interrupt on line with no process waiting\n");
-        return;
+        PANIC();
     }
     
     state_t* state = &p->p_s;
     STATE_SYSCALL_RETURN(state) = status;
 
 //    term_putchar(TERMINAL6, status >> 8);
-    
 #if 0
-    char buf[2];
-    buf[0] = (status >> 8) & 0xFF;
-    buf[1] = 0;
-    kprintf("WAITIO ended with status: %x, and char %s\n", status & TERM_STATUS_MASK, buf);
+    if(debug_count >= 5)
+    {
+        kprintf("!%x\n", p);
+#if 0
+        char buf[2];
+        buf[0] = (status >> 8) & 0xFF;
+        buf[1] = 0;
+        kprintf("WAITIO for process %x ended with status: %x, and char %s\n", p, status & TERM_STATUS_MASK, buf);
+#endif
+    }
 #endif
     
     resumeProcess(p);
 }
 
 //Controlla quali interrupt line hanno un interrupt pending partendo da quella con
-//priorita' maggiore, cioe' dalla linea di numero minore. 
+//priorita' maggiore, cioe' dalla linea di numero minore.
 //Ritorna 1 se almeno un processo e' stato risvegliato in seguito a un interrupt
 int checkDeviceInterrupts(unsigned int cause)
 {

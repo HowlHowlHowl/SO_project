@@ -32,6 +32,7 @@ void initNewArea(unsigned int area_addr, void (*handler)(void))
     state->pc_epc = (unsigned int)handler;
     state->status = STATUS_CU0;
 #endif
+    
 }
 
 //Inizializza un pcb e lo ritorna
@@ -44,14 +45,14 @@ pcb_t* initPcbState(unsigned int stack_pointer, void (*func)(void)){
     p->p_s.sp = stack_pointer;
     p->p_s.pc = (unsigned int)func;
     p->p_s.cpsr = STATUS_SYS_MODE;
-    p->p_s.cpsr = STATUS_ALL_INT_DISABLE(p->p_s.cpsr);
-    p->p_s.cpsr = STATUS_ENABLE_TIMER(p->p_s.cpsr);
+    p->p_s.cpsr = STATUS_ALL_INT_ENABLE(p->p_s.cpsr);
+//    p->p_s.cpsr = STATUS_ENABLE_TIMER(p->p_s.cpsr);
 #endif
     
 #ifdef TARGET_UMPS
     p->p_s.reg_sp = stack_pointer;
     p->p_s.pc_epc = (unsigned int)func;
-    p->p_s.status = STATUS_CU0 | STATUS_IM(IL_TIMER) | STATUS_IEp;
+    p->p_s.status = STATUS_CU0 | STATUS_IM_MASK | STATUS_IEp;
 #endif
     
     return p;
@@ -84,7 +85,6 @@ int main()
     //Aggiunta del processo idle 
     pcb_t* idle = initPcbState(RAMTOP - FRAME_SIZE * 50, idle_func);
     setIdleProcess(idle);
-    kprintf("Idle process is %x\n", idle);
     
     //Avvio scheduler
     schedule();

@@ -15,36 +15,34 @@ void syscallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *w
     *user = current_proc->user_time;
     *kernel = current_proc->kernel_time;
     *wallclock = (getTime() - current_proc->begin_timestamp);
-    
-    kprintf("GETCPUTIME: %u user, %u kernel, %u wallclock\n", *user, *kernel, *wallclock);
 }
 
 //SysCall 2. Crea un nuovo processo come figlio del chiamante,
 //se la syscall ha successo cpid continene l'indirizzo del pcb_t del processo figlio creato
 int syscallCreateProcess(state_t* statep, int priority, void **cpid)
 {
-    pcb_t* childProc = allocPcb();
+    pcb_t* child_proc = allocPcb();
     
-    if(childProc)
+    if(child_proc)
     {
-        pcb_t* currentProc = getCurrentProcess();
-        insertChild(currentProc, childProc);
+        pcb_t* current_proc = getCurrentProcess();
+        insertChild(current_proc, child_proc);
         if(cpid)
         {
-            *cpid = childProc;
+            *cpid = child_proc;
         }
         
-        state_t* status = &childProc->p_s;
+        state_t* status = &child_proc->p_s;
         
         STATUS(status) = STATUS(statep);
         PC(status) = PC(statep);
         SP(status) = SP(statep);
         
-        addProcess(childProc, priority);
+        addProcess(child_proc, priority);
         return 0;
     }
     
-    kprintf("Create process failed\n");
+//    kprintf("Create process failed\n");
     
     return -1;
 }
@@ -58,13 +56,13 @@ int syscallTerminateProcess(void* pid)
     pcb_t* p = (pcb_t*)pid;
     if(!p)
     {
-        kprintf("Process %x committing suicide\n", getCurrentProcess());
+//        kprintf("Process %x committing suicide\n", getCurrentProcess());
         terminateCurrentProcess();
         return 0;
     }
     else
     {
-        kprintf("Syscall terminate process on: %x\n", p);
+//        kprintf("Syscall terminate process on: %x\n", p);
         return terminateProcess(p);
     }
 }
@@ -79,7 +77,7 @@ void syscallVerhogen(int* semaddr)
     }
     else
     {
-        kprintf("%x resumed by V on %x by %x\n", p, semaddr, getCurrentProcess());
+//        kprintf("%x resumed by V on %x by %x\n", p, semaddr, getCurrentProcess());
         resumeProcess(p);
     }
 }
@@ -90,7 +88,7 @@ void syscallPasseren(int* semaddr)
     if(*semaddr == 0)
     {
         pcb_t* p = suspendCurrentProcess();
-        kprintf("%x suspended by P on %x\n", p, semaddr);
+//        kprintf("%x suspended by P on %x\n", p, semaddr);
         if(insertBlocked(semaddr, p))
         {
             kprintf("insertBlocked failed!");
@@ -141,7 +139,7 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
     //Validazione device
     if(!IsValidDeviceAddress(dev))
     {
-        kprintf("Process terminated because of invalid reg passed to syscallDo_IO: 0x%x\n", reg);
+//        kprintf("Process terminated because of invalid reg passed to syscallDo_IO: 0x%x\n", reg);
         
         //In caso di errore terminiamo il processo corrente
         terminateCurrentProcess();
@@ -169,14 +167,14 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
         
         if(getSemd(key) != 0)
         {
-            kprintf("Yo process trying to access some device in use\n");
+            kprintf("Process trying to access some device in use\n");
             PANIC();
         }
         
         //Inserimento del processo corrente in coda su di un semaforo
         if(insertBlocked(key, process))
         {
-            kprintf("insertBlocked failed!");
+            kprintf("insertBlocked failed\n");
             PANIC();
         }
     }
@@ -185,8 +183,6 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 //SysCall 7. Regstra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap
 int syscallSpecPassup(int type, state_t* old, state_t* new)
 {
-    kprintf("Specpassup happening| ");
-    
     //Verifica che il type sia nel range consentito
     if(0 <= type && type < SPECPASSUP_NUM_TYPES)
     {
@@ -196,7 +192,7 @@ int syscallSpecPassup(int type, state_t* old, state_t* new)
         //Verifica che i campi relativiall'handler non siano già stati impostati
         if(!current_areas->old_area && !current_areas->new_area)
         {
-            kprintf("Registered newareas of type %d for process %x: old = %x, new = %x\n", type, current, old, new);
+//            kprintf("Registered newareas of type %d for process %x: old = %x, new = %x\n", type, current, old, new);
             current_areas->old_area = old;
             current_areas->new_area = new;
             
@@ -204,7 +200,7 @@ int syscallSpecPassup(int type, state_t* old, state_t* new)
         }
     }
         
-    kprintf("Process terminated due to error registering specpassup areas\n");
+//    kprintf("Process terminated due to error registering specpassup areas\n");
     //In caso di errore terminiamo il processo corrente
     terminateCurrentProcess();
     
