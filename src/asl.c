@@ -131,7 +131,7 @@ pcb_t* outBlocked(pcb_t *p)
     else
     {
         pcb_t* result = outProcQ(&tmp->s_procQ,p);
-        result->p_semkey=NULL;
+        result->p_semkey = NULL;
         
         /*Se la lista è diventata vuota libera il semd */
         if (emptyProcQ(&tmp->s_procQ))
@@ -162,7 +162,6 @@ pcb_t* headBlocked(int *key)
   ricorsivamente su tutti i figli*/
 void outChildBlocked(pcb_t *p) 
 {
-    
     outBlocked(p);
     pcb_t* pos;
     list_for_each_entry(pos,&p->p_child,p_sib)

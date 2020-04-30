@@ -6,8 +6,6 @@
 
 #define TIME_SLICE_DURATION_MS 3
 
-//extern int debug_count;
-
 static struct list_head ready_queue;
 static pcb_t* current_process;
 static pcb_t* idle_process;
@@ -22,15 +20,9 @@ void initScheduler(void)
     mkEmptyProcQ(&ready_queue);
 }
 
-// Aggiunge un processo alla coda con la priorita' specificata
+// Aggiunge un processo alla coda con la priorita' specificata inizializzandone il begin_timestamp
 void addProcess(pcb_t* p, int priority)
 {
-    if(!p)
-    {
-        kprintf("Calling add process with NULL p");
-        PANIC();
-    }
-    
     p->priority = priority;
     p->original_priority = priority;
     p->begin_timestamp = getTime();
@@ -43,6 +35,7 @@ void setIdleProcess(pcb_t* p)
     idle_process = p;
 }
 
+//Ritorna 1 se il processo corrente e' il processo idle, 0 altrimenti
 int isIdleProcessCurrent(void)
 {
     return current_process == idle_process;
@@ -69,13 +62,18 @@ static int removePcbRecursively(pcb_t* p)
         removed = outBlocked(p);
     }
     
+    if(!removed)
+    {
+       //Il processo non esiste poiche' non si trova ne' nella ready queue ne' nella coda di un semaforo
+        return -1;
+    }
+    
+    //Procediamo ricorsivamente su tutti i figli
     while(!emptyChild(p))
     {
         pcb_t* child = removeChild(p);
         removePcbRecursively(child);
     }
-    outChild(p);
-    //TODO libera il processo dal semaforo.
     
     //Se abbiamo rimosso il processo corrente lo settiamo a NULL
     if(p == current_process)
@@ -83,16 +81,13 @@ static int removePcbRecursively(pcb_t* p)
         current_process = NULL;
     }
     
-
+    //Rimuoviamo il processo dai figli del padre.
+    outChild(p);
+    
+    //Resituiamo il pcb alla lista libera
     freePcb(p);
     
     return 0;
-}
-
-//Termina il processo corrente e l'albero radicato in esso
-void terminateCurrentProcess(void)
-{
-    removePcbRecursively(current_process);
 }
 
 //Termina il processo passato come parametro e l'albero radicato in esso
@@ -102,21 +97,18 @@ int terminateProcess(pcb_t* p)
     return removePcbRecursively(p);
 }
 
+//Termina il processo corrente e l'albero radicato in esso
+void terminateCurrentProcess(void)
+{
+    if(current_process)
+    {
+        terminateProcess(current_process);
+    }
+}
+
 // Inserisce p nella coda, la priorita' di p e' gia' stata impostata in precedenza
 void resumeProcess(pcb_t* p)
 {
-    if(!p)
-    {
-        kprintf("Calling resume process with NULL p");
-        PANIC();
-    }
-    
-    if(p->p_semkey)
-    {
-        kprintf("Resuming process waiting on semaphore!\n");
-        PANIC();
-    }
-
     insertProcQ(&ready_queue, p);
 }
 
@@ -166,18 +158,6 @@ static void resetIntervalTimer(void)
 //Imposta p come processo corrente e gli passa il controllo
 static void switchToProcess(pcb_t* p)
 {
-    if(!p)
-    {
-        kprintf("Calling switchToProcess with NULL p\n");
-        PANIC();
-    }
-    
-    if(p->p_semkey != 0)
-    {
-        kprintf("Scheduling process %x sleeping on semaphore %x!\n", p, p->p_semkey);
-        PANIC();
-    }
-    
     resetIntervalTimer();
     current_process = p;
     updateTimeSliceBegin();

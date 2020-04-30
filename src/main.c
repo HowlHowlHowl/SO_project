@@ -1,7 +1,6 @@
 #include "system.h"
 #include "pcb.h"
 #include "asl.h"
-#include "kprintf.h"
 #include "scheduler.h"
 #include "utils.h"
 #include "handler.h"
@@ -39,14 +38,13 @@ void initNewArea(unsigned int area_addr, void (*handler)(void))
 pcb_t* initPcbState(unsigned int stack_pointer, void (*func)(void)){
     pcb_t* p = allocPcb();
 
-    /*Abilita la kernel mode e l'interrupt line dell'interval timer
+    /*Abilita la kernel mode e tutte le interrupt line
       Imposta il PC a puntare l'address della relativa funzione di test*/
 #ifdef TARGET_UARM
     p->p_s.sp = stack_pointer;
     p->p_s.pc = (unsigned int)func;
     p->p_s.cpsr = STATUS_SYS_MODE;
     p->p_s.cpsr = STATUS_ALL_INT_ENABLE(p->p_s.cpsr);
-//    p->p_s.cpsr = STATUS_ENABLE_TIMER(p->p_s.cpsr);
 #endif
     
 #ifdef TARGET_UMPS
@@ -83,7 +81,7 @@ int main()
     addProcess(p, 1);
     
     //Aggiunta del processo idle 
-    pcb_t* idle = initPcbState(RAMTOP - FRAME_SIZE * 50, idle_func);
+    pcb_t* idle = initPcbState(RAMTOP, idle_func);
     setIdleProcess(idle);
     
     //Avvio scheduler

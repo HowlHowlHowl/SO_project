@@ -7,8 +7,8 @@
 
 /*SysCall 1.
 Quando invocata restituisce il tempo di esecuzione del processo chiamante
-suddiviso in user_time kernel_time e global_time,
-il tempo totale trasccorso dalla prima attivazione del processo.*/
+suddiviso in user_time kernel_time e global_time, il tempo totale trasccorso 
+dalla prima attivazione del processo. */
 void syscallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *wallclock)
 {
     pcb_t* current_proc = getCurrentProcess();
@@ -17,8 +17,9 @@ void syscallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *w
     *wallclock = (getTime() - current_proc->begin_timestamp);
 }
 
-//SysCall 2. Crea un nuovo processo come figlio del chiamante,
-//se la syscall ha successo cpid continene l'indirizzo del pcb_t del processo figlio creato
+/* SysCall 2. 
+Crea un nuovo processo come figlio del chiamante, se la syscall ha successo 
+cpid (se non NULL) continene l'indirizzo del pcb_t del processo figlio creato */
 int syscallCreateProcess(state_t* statep, int priority, void **cpid)
 {
     pcb_t* child_proc = allocPcb();
@@ -42,32 +43,29 @@ int syscallCreateProcess(state_t* statep, int priority, void **cpid)
         return 0;
     }
     
-//    kprintf("Create process failed\n");
-    
     return -1;
 }
 
-/*SysCall 3. Termina il processo identificato dal parametro pid
-e l'albero di processi radicato in esso, se non esiste ritorna -1.
-Se pid è NULL termina il processo corrente*/
+/*SysCall 3. 
+Termina il processo identificato dal parametro pid e l'albero di processi radicato in esso, 
+se non esiste ritorna -1. Se pid è NULL termina il processo corrente*/
 int syscallTerminateProcess(void* pid)
 {
     
     pcb_t* p = (pcb_t*)pid;
     if(!p)
     {
-//        kprintf("Process %x committing suicide\n", getCurrentProcess());
         terminateCurrentProcess();
         return 0;
     }
     else
     {
-//        kprintf("Syscall terminate process on: %x\n", p);
         return terminateProcess(p);
     }
 }
 
-//SysCall 4. Operazione di rilascio sul semaforo identificato dal valore di semaddr ::= V() sui semafori
+/*SysCall 4. 
+Operazione di rilascio sul semaforo identificato dal valore di semaddr */
 void syscallVerhogen(int* semaddr)
 {
     pcb_t* p = removeBlocked(semaddr);
@@ -77,21 +75,20 @@ void syscallVerhogen(int* semaddr)
     }
     else
     {
-//        kprintf("%x resumed by V on %x by %x\n", p, semaddr, getCurrentProcess());
         resumeProcess(p);
     }
 }
 
-//SysCall 5. Operazione di richiesta di un semaforo ::= P() sui semafori
+/*SysCall 5. 
+Operazione di richiesta di un semaforo */
 void syscallPasseren(int* semaddr)
 {
     if(*semaddr == 0)
     {
         pcb_t* p = suspendCurrentProcess();
-//        kprintf("%x suspended by P on %x\n", p, semaddr);
         if(insertBlocked(semaddr, p))
         {
-            kprintf("insertBlocked failed!");
+            kprintf("Unable to allocate semaphore!\n");
             PANIC();
         }
     }
@@ -102,7 +99,7 @@ void syscallPasseren(int* semaddr)
 }
 
 //Ritorna 1 se dev e' un indirizzo valido per un device e 0 altrimenti
-int IsValidDeviceAddress(void* dev)
+static int IsValidDeviceAddress(void* dev)
 {
     unsigned int start = DEV_REG_ADDR(DEV_IL_START, 0);
     unsigned int end = DEV_REG_END;
@@ -123,7 +120,8 @@ int IsValidDeviceAddress(void* dev)
     return 0;
 }
 
-//SysCall 6. Attiva un operazione di input/output. L'operazione è bloccante
+/*SysCall 6. 
+Attiva un'operazione di input/output. L'operazione è bloccante */
 void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 {
     //Viene definito un device generico
@@ -133,14 +131,12 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
     
     //Utilizziamo l'indirizzo del device come chiave del semaforo su cui il processo
     //rimane in attesa del completamento dell'operazione, nel caso di terminali
-    //utilizziamo due indirizzi distinti in per operazioni di trasmissione e ricezione
+    //utilizziamo due indirizzi distinti per operazioni di trasmissione e ricezione
     int *key = (int*)reg;
     
     //Validazione device
     if(!IsValidDeviceAddress(dev))
     {
-//        kprintf("Process terminated because of invalid reg passed to syscallDo_IO: 0x%x\n", reg);
-        
         //In caso di errore terminiamo il processo corrente
         terminateCurrentProcess();
     }
@@ -165,22 +161,17 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
             }
         }
         
-        if(getSemd(key) != 0)
-        {
-            kprintf("Process trying to access some device in use\n");
-            PANIC();
-        }
-        
         //Inserimento del processo corrente in coda su di un semaforo
         if(insertBlocked(key, process))
         {
-            kprintf("insertBlocked failed\n");
+            kprintf("Unable to allocate semaphore!\n");
             PANIC();
         }
     }
 }
 
-//SysCall 7. Regstra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap
+/*SysCall 7. 
+Registra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap. */
 int syscallSpecPassup(int type, state_t* old, state_t* new)
 {
     //Verifica che il type sia nel range consentito
@@ -192,7 +183,6 @@ int syscallSpecPassup(int type, state_t* old, state_t* new)
         //Verifica che i campi relativiall'handler non siano già stati impostati
         if(!current_areas->old_area && !current_areas->new_area)
         {
-//            kprintf("Registered newareas of type %d for process %x: old = %x, new = %x\n", type, current, old, new);
             current_areas->old_area = old;
             current_areas->new_area = new;
             
@@ -200,13 +190,14 @@ int syscallSpecPassup(int type, state_t* old, state_t* new)
         }
     }
         
-//    kprintf("Process terminated due to error registering specpassup areas\n");
     //In caso di errore terminiamo il processo corrente
     terminateCurrentProcess();
     
     return -1;
 }
-//SysCall 8.
+/*SysCall 8.
+Ritorna in pid e ppid (se non sono NULL) l'indirizzo del pcb del processo corrente e 
+del padre rispettivamente */
 void syscallGetPidPPid(void** pid, void** ppid)
 {
     pcb_t* currentProcess = getCurrentProcess();
