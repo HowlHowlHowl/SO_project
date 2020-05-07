@@ -35,12 +35,6 @@ void setIdleProcess(pcb_t* p)
     idle_process = p;
 }
 
-//Ritorna 1 se il processo corrente e' il processo idle, 0 altrimenti
-int isIdleProcessCurrent(void)
-{
-    return current_process == idle_process;
-}
-
 //Aggiorna lo stato del processo corrente allo stato passato come parametro
 void updateCurrentProcess(state_t* state)
 {

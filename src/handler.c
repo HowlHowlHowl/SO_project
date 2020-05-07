@@ -124,6 +124,8 @@ void handler_int(void)
 {
     state_t* old_state = (state_t*)INT_OLDAREA;
     
+    unsigned int interrupt_begin_timestamp = getTime();
+    
 #ifdef TARGET_UARM
     //Come specificato al capitolo 2.5.3 del manuale di uArm il pc va decrementato di 4
     //in seguito ad un interrupt
@@ -132,29 +134,33 @@ void handler_int(void)
     
     unsigned int cause = STATE_CAUSE(old_state);
     
-    int any_resumed = checkDeviceInterrupts(cause);
+    int resumed_max_priority = checkDeviceInterrupts(cause);
     
     if(CAUSE_IP_GET(cause, IL_TIMER))
     {
         //Se il time slice e' terminato in seguito a un interrupt dell'interval timer
-        //aggiorna lo stato del processo corrente e reinvoca lo scheduler,
+        //aggiorna lo stato del processo corrente e reinvoca lo scheduler
         pcb_t* current_proc = getCurrentProcess();
         updateCurrentProcess(old_state);
         
         //Il time slice in user mode termina definitivamente e l'user time viene aggiornato
-        current_proc->user_time += getTime() - getTimeSliceBegin();
+        current_proc->user_time += interrupt_begin_timestamp - getTimeSliceBegin();
         
         //la chiamata schedule() non ritorna
         schedule();
     }
     else
     {
-        if(any_resumed && isIdleProcessCurrent())
+        pcb_t* current_proc = getCurrentProcess();
+        
+        //Se il processo di priorita' massima tra quelli svegliati da un interrupt
+        //ha priorita' piu' alta del processo corrente passiamo il controllo ad esso
+        if(resumed_max_priority > current_proc->priority)
         {
-            //Se il processo corrente e' l'idle e ci sono processi svegliati in seguito
-            //a un interrupt interrompiamo il processo corrente e passiamo il controllo
-            //a quello di priorita' piu' alta.
+            //Aggiorniamo il suo pcb con lo stato attuale e il tempo user trascorso
             updateCurrentProcess(old_state);
+            current_proc->user_time += interrupt_begin_timestamp - getTimeSliceBegin();
+            
             schedule();
         }
         else

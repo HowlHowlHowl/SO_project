@@ -5,6 +5,7 @@
 #include "term_print.h"
 #include "asl.h"
 #include "handler.h"
+#include "utils.h"
 
 #define CMD_ACK 1
 #define TERM_STATUS_MASK 0xFF
@@ -12,14 +13,15 @@
 // Trova il processo in attesa sulla linea, device e subdevice specificati,
 // imposta il corretto valore di ritorno dell syscall di IO e reinserisce il processo
 // nella ready queue.
-void wakeUpProcess(int* key, unsigned int status, unsigned int kernel_time_begin)
+// Ritorna la priorita' del processo svegliato e 0 in caso di errore.
+int wakeUpProcess(int* key, unsigned int status, unsigned int kernel_time_begin)
 {
     pcb_t* p = removeBlocked(key);
     
     if(!p)
     {
         kprintf("Error: Interrupt on line with no process waiting\n");
-        return;
+        return 0;
     }
     
     //Inserisce lo status come valore di ritorno per la syscall Do_IO
@@ -31,11 +33,14 @@ void wakeUpProcess(int* key, unsigned int status, unsigned int kernel_time_begin
 
     //Reinserisce il processo nella ready queue
     resumeProcess(p);
+    
+    return p->priority;
 }
 
-//Controlla quali interrupt line hanno un interrupt pending partendo da quella con
+//Controlla quali interrupt line hanno un interrupt pending partendo dalla quella con
 //priorita' maggiore, cioe' dalla linea di numero minore.
-//Ritorna 1 se almeno un processo e' stato risvegliato in seguito a un interrupt
+//Ritorna la priorita' piu' alta tra quella dei processi svegliati, 0 se nessun processo
+//e' stato svegliato in seguito a un interrupt.
 int checkDeviceInterrupts(unsigned int cause)
 {
     int result = 0;
@@ -68,24 +73,24 @@ int checkDeviceInterrupts(unsigned int cause)
                         if((status & TERM_STATUS_MASK) == DEV_TRCV_S_CHARRECV)
                         {
                             dev->term.recv_command = CMD_ACK;
-                            wakeUpProcess((int*)&dev->term.recv_status, status, kernel_time_begin);
-                            result = 1;
+                            int priority = wakeUpProcess((int*)&dev->term.recv_status, status, kernel_time_begin);
+                            result = MAX(result, priority);
                         }
                         
                         status = dev->term.transm_status;
                         if((status & TERM_STATUS_MASK) == DEV_TTRS_S_CHARTRSM)
                         {
                             dev->term.transm_command = CMD_ACK;
-                            wakeUpProcess((int*)&dev->term.transm_status, status, kernel_time_begin);
-                            result = 1;
+                            int priority = wakeUpProcess((int*)&dev->term.transm_status, status, kernel_time_begin);
+                            result = MAX(result, priority);
                         }
                     }
                     else
                     {
                         status = dev->dtp.status;
                         dev->dtp.command = CMD_ACK;
-                        wakeUpProcess((int*)dev, status, kernel_time_begin);
-                        result = 1;
+                        int priority = wakeUpProcess((int*)dev, status, kernel_time_begin);
+                        result = MAX(result, priority);
                     }
                 }
             }
