@@ -4,10 +4,11 @@
 #include "syscall.h"
 #include "handler.h"
 #include "kprintf.h"
+#include "interrupt.h"
 
 /*SysCall 1.
 Quando invocata restituisce il tempo di esecuzione del processo chiamante
-suddiviso in user_time kernel_time e global_time, il tempo totale trasccorso 
+suddiviso in user_time kernel_time e global_time, il tempo totale trasccorso
 dalla prima attivazione del processo. */
 void syscallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *wallclock)
 {
@@ -17,8 +18,8 @@ void syscallGetCPUTime(unsigned int* user, unsigned int* kernel, unsigned int *w
     *wallclock = (getTime() - current_proc->begin_timestamp);
 }
 
-/* SysCall 2. 
-Crea un nuovo processo come figlio del chiamante, se la syscall ha successo 
+/* SysCall 2.
+Crea un nuovo processo come figlio del chiamante, se la syscall ha successo
 cpid (se non NULL) continene l'indirizzo del pcb_t del processo figlio creato */
 int syscallCreateProcess(state_t* statep, int priority, void **cpid)
 {
@@ -46,8 +47,8 @@ int syscallCreateProcess(state_t* statep, int priority, void **cpid)
     return -1;
 }
 
-/*SysCall 3. 
-Termina il processo identificato dal parametro pid e l'albero di processi radicato in esso, 
+/*SysCall 3.
+Termina il processo identificato dal parametro pid e l'albero di processi radicato in esso,
 se non esiste ritorna -1. Se pid è NULL termina il processo corrente*/
 int syscallTerminateProcess(void* pid)
 {
@@ -64,7 +65,7 @@ int syscallTerminateProcess(void* pid)
     }
 }
 
-/*SysCall 4. 
+/*SysCall 4.
 Operazione di rilascio sul semaforo identificato dal valore di semaddr */
 void syscallVerhogen(int* semaddr)
 {
@@ -79,7 +80,7 @@ void syscallVerhogen(int* semaddr)
     }
 }
 
-/*SysCall 5. 
+/*SysCall 5.
 Operazione di richiesta di un semaforo */
 void syscallPasseren(int* semaddr)
 {
@@ -120,7 +121,7 @@ static int IsValidDeviceAddress(void* dev)
     return 0;
 }
 
-/*SysCall 6. 
+/*SysCall 6.
 Attiva un'operazione di input/output. L'operazione è bloccante */
 void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
 {
@@ -128,11 +129,6 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
     devreg_t* dev = (devreg_t*)reg;
     //Il processo corrente viene rimosso dalla ready_queue
     pcb_t* process = suspendCurrentProcess();
-    
-    //Utilizziamo l'indirizzo del device come chiave del semaforo su cui il processo
-    //rimane in attesa del completamento dell'operazione, nel caso di terminali
-    //utilizziamo due indirizzi distinti per operazioni di trasmissione e ricezione
-    int *key = (int*)reg;
     
     //Validazione device
     if(!IsValidDeviceAddress(dev))
@@ -142,35 +138,50 @@ void syscallDo_IO(unsigned int command, unsigned int *reg, int subdevice)
     }
     else
     {
+        //Utilizziamo l'indirizzo del device come chiave del semaforo su cui il processo
+        //rimane in attesa del completamento dell'operazione, nel caso di terminali
+        //utilizziamo due indirizzi distinti per operazioni di trasmissione e ricezione
+        int *key;
+        unsigned int* command_register;
+        
         if((unsigned int)reg < DEV_REG_ADDR(IL_TERMINAL,0))
         {
-            dev->dtp.command = command;
+            command_register = &dev->dtp.command;
+            key = (int*)dev;
         }
         else
         {
-            //Identificazione del subdevice nel caso la SYSCALL sia stata effettuata da un terminale
+            //Identificazione del subdevice nel caso del terminale
             if(subdevice)
             {
-                dev->term.recv_command = command;
+                command_register = &dev->term.recv_command;
                 key = (int*)&dev->term.recv_status;
             }
             else
             {
-                dev->term.transm_command = command;
+                command_register = &dev->term.transm_command;
                 key = (int*)&dev->term.transm_status;
             }
         }
         
-        //Inserimento del processo corrente in coda su di un semaforo
-        if(insertBlocked(key, process))
+        //Se il device ha gia' un processo in attesa di completamento  mettiamo il processo
+        //sulla coda per l'utilizzo del device.
+        if(getSemd(key))
         {
-            kprintf("Unable to allocate semaphore!\n");
-            PANIC();
+            int* wait_key = getWaitKeyFromDeviceKey(key);
+            insertBlocked(wait_key, process);
+        }
+        //Altrimenti eseguiamo il comando e inseriamo il processo corrente in coda 
+        //per il completamento dell'operazione
+        else
+        {
+            *command_register = command;
+            insertBlocked(key, process);
         }
     }
 }
 
-/*SysCall 7. 
+/*SysCall 7.
 Registra l'handler di livello superiore da attivare in caso di trad si Sys/BP, TLB o Trap. */
 int syscallSpecPassup(int type, state_t* old, state_t* new)
 {
@@ -196,7 +207,7 @@ int syscallSpecPassup(int type, state_t* old, state_t* new)
     return -1;
 }
 /*SysCall 8.
-Ritorna in pid e ppid (se non sono NULL) l'indirizzo del pcb del processo corrente e 
+Ritorna in pid e ppid (se non sono NULL) l'indirizzo del pcb del processo corrente e
 del padre rispettivamente */
 void syscallGetPidPPid(void** pid, void** ppid)
 {

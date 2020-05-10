@@ -10,12 +10,23 @@
 #define CMD_ACK 1
 #define TERM_STATUS_MASK 0xFF
 
-// Trova il processo in attesa sulla linea, device e subdevice specificati,
-// imposta il corretto valore di ritorno dell syscall di IO e reinserisce il processo
-// nella ready queue.
-// Ritorna la priorita' del processo svegliato e 0 in caso di errore.
-int wakeUpProcess(int* key, unsigned int status, unsigned int kernel_time_begin)
+//Utilizziamo il puntatore al byte sucessivo come chiave per il semaforo
+//di attesa quando il device e' gia' in uso da un processo
+int* getWaitKeyFromDeviceKey(int* key)
 {
+    return (int*)(((char*)key) + 1);
+}
+
+// Trova il processo in attesa sulla coda del device associato alla chiave specificata
+// imposta il corretto valore di ritorno dell syscall di IO e reinserisce il processo
+// nella ready queue, inoltre esegue il comando del prossimo processo in attesa se presente.
+// Ritorna la priorita' del processo svegliato e 0 in caso di errore.
+static int wakeUpProcessAndExecuteNext(int* key, unsigned int* device_command, unsigned int status, unsigned int kernel_time_begin)
+{
+    //Invia l'ack al device
+    *device_command = CMD_ACK;
+    
+    //Rimuove il processo in attesa del completamento del comando
     pcb_t* p = removeBlocked(key);
     
     if(!p)
@@ -34,11 +45,23 @@ int wakeUpProcess(int* key, unsigned int status, unsigned int kernel_time_begin)
     //Reinserisce il processo nella ready queue
     resumeProcess(p);
     
+    //Se qualche processo era in attesa di utilizzare il device prendiamo il primo,
+    //eseguiamo il suo comando e lo mettiamo in attesa sul semaforo di completamento.
+    int* wait_key = getWaitKeyFromDeviceKey(key);
+    pcb_t* next_p = removeBlocked(wait_key);
+    if(next_p)
+    {
+        unsigned int command = STATE_SYSCALL_P1(&next_p->p_s);
+        *device_command = command;
+        insertBlocked(key, next_p);
+    }
+    
+    //Ritorniamo la priorita' del processo che ha completato l'operazione
     return p->priority;
 }
 
-//Controlla quali interrupt line hanno un interrupt pending partendo dalla quella con
-//priorita' maggiore, cioe' dalla linea di numero minore.
+//Controlla quali interrupt line hanno un interrupt pending partendo dalla linea con
+//priorita' maggiore, cioe' quella di numero minore.
 //Ritorna la priorita' piu' alta tra quella dei processi svegliati, 0 se nessun processo
 //e' stato svegliato in seguito a un interrupt.
 int checkDeviceInterrupts(unsigned int cause)
@@ -72,24 +95,21 @@ int checkDeviceInterrupts(unsigned int cause)
                         status = dev->term.recv_status;
                         if((status & TERM_STATUS_MASK) == DEV_TRCV_S_CHARRECV)
                         {
-                            dev->term.recv_command = CMD_ACK;
-                            int priority = wakeUpProcess((int*)&dev->term.recv_status, status, kernel_time_begin);
+                            int priority = wakeUpProcessAndExecuteNext((int*)&dev->term.recv_status, &dev->term.recv_command, status, kernel_time_begin);
                             result = MAX(result, priority);
                         }
                         
                         status = dev->term.transm_status;
                         if((status & TERM_STATUS_MASK) == DEV_TTRS_S_CHARTRSM)
                         {
-                            dev->term.transm_command = CMD_ACK;
-                            int priority = wakeUpProcess((int*)&dev->term.transm_status, status, kernel_time_begin);
+                            int priority = wakeUpProcessAndExecuteNext((int*)&dev->term.transm_status, &dev->term.transm_command, status, kernel_time_begin);
                             result = MAX(result, priority);
                         }
                     }
                     else
                     {
                         status = dev->dtp.status;
-                        dev->dtp.command = CMD_ACK;
-                        int priority = wakeUpProcess((int*)dev, status, kernel_time_begin);
+                        int priority = wakeUpProcessAndExecuteNext((int*)dev, &dev->dtp.command, status, kernel_time_begin);
                         result = MAX(result, priority);
                     }
                 }
