@@ -11,7 +11,7 @@ static pcb_t* current_process;
 static pcb_t* idle_process;
 
 //time-stamp del tempo in cui viene passato il controllo al processo
-static unsigned int current_slice_timestamp;
+static unsigned int current_user_timestamp;
 
 
 // Inizializza la coda dei processi
@@ -127,16 +127,16 @@ unsigned int getTime(void)
     return getTODLO();
 }
 
-//Ritorna il timestamp a cui e' cominciato il time slice corrente
-unsigned int getTimeSliceBegin(void)
+//Ritorna il timestamp a cui e' cominciato lo user time corrente
+unsigned int getUserTimeBegin(void)
 {
-    return current_slice_timestamp;
+    return current_user_timestamp;
 }
 
 //Aggiorna il current_slice_timestamp al tempo attuale
-void updateTimeSliceBegin(void) 
+void updateUserTimeBegin(void) 
 {
-    current_slice_timestamp = getTime();    
+    current_user_timestamp = getTime();    
 }
 
 //Fa ripartire l'interval timer
@@ -154,7 +154,7 @@ static void switchToProcess(pcb_t* p)
 {
     resetIntervalTimer();
     current_process = p;
-    updateTimeSliceBegin();
+    updateUserTimeBegin();
     LDST(&p->p_s);
 }
 

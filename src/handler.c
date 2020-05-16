@@ -26,21 +26,17 @@ static void callSpecpassupHandler(state_t* state, int type)
     }
 }
 
-//Handler per system call e breakpoint
+// Handler per system call e breakpoint
 void handler_sysbk(void)
 {
     pcb_t* process = getCurrentProcess();
-    if(!process) 
-    {
-        kprintf("syscall with no current process!\n");
-        PANIC();
-    }
-    
+
     //Aggiorna l'user_time al timestamp attuale - il quello all'inizio dell'ultima time slice
-    process->user_time += getTime() - getTimeSliceBegin();
+    process->user_time += getTime() - getUserTimeBegin();
     unsigned int start_kernel_time = getTime();
      
     state_t* old_state = (state_t*)SYSBK_OLDAREA;
+    
 #ifdef TARGET_UMPS
     //Incrementa il pc di 4 per l'architettura umps
     PC(old_state) += 4;
@@ -90,7 +86,7 @@ void handler_sysbk(void)
     //dopo aver aggiornato l'inizio dello user time
     if(getCurrentProcess())
     {
-        updateTimeSliceBegin();
+        updateUserTimeBegin();
         LDST(old_state);
     }
     //Altrimenti aggiorniamo il suo stato e scheduliamo il prossimo processo
@@ -101,7 +97,7 @@ void handler_sysbk(void)
     }
 }
 
-//Handler per program traps
+// Handler per program traps
 void handler_pgmtrap(void)
 {
     state_t* old_state = (state_t*)PGMTRAP_OLDAREA;
@@ -110,7 +106,7 @@ void handler_pgmtrap(void)
     callSpecpassupHandler(old_state, SPECPASSUP_TYPE_PGMTRAP);
 }
 
-//Handler per la gestione del TLB
+// Handler per la gestione del TLB
 void handler_tlb(void)
 {
     state_t* old_state = (state_t*)TLB_OLDAREA;
@@ -119,12 +115,14 @@ void handler_tlb(void)
     callSpecpassupHandler(old_state, SPECPASSUP_TYPE_TLB);
 }
 
-//Handler per la gestione degli interrupt
+// Handler per la gestione degli interrupt
 void handler_int(void)
 {
-    state_t* old_state = (state_t*)INT_OLDAREA;
+    //Aggiorna l'user_time al timestamp attuale - il quello all'inizio dell'ultimo user time
+    pcb_t* current_proc = getCurrentProcess();
+    current_proc->user_time += getTime() - getUserTimeBegin();
     
-    unsigned int interrupt_begin_timestamp = getTime();
+    state_t* old_state = (state_t*)INT_OLDAREA;
     
 #ifdef TARGET_UARM
     //Come specificato al capitolo 2.5.3 del manuale di uArm il pc va decrementato di 4
@@ -140,32 +138,25 @@ void handler_int(void)
     {
         //Se il time slice e' terminato in seguito a un interrupt dell'interval timer
         //aggiorna lo stato del processo corrente e reinvoca lo scheduler
-        pcb_t* current_proc = getCurrentProcess();
         updateCurrentProcess(old_state);
-        
-        //Il time slice in user mode termina definitivamente e l'user time viene aggiornato
-        current_proc->user_time += interrupt_begin_timestamp - getTimeSliceBegin();
-        
         //la chiamata schedule() non ritorna
         schedule();
     }
     else
     {
-        pcb_t* current_proc = getCurrentProcess();
-        
         //Se il processo di priorita' massima tra quelli svegliati da un interrupt
         //ha priorita' piu' alta del processo corrente passiamo il controllo ad esso
         if(resumed_max_priority > current_proc->priority)
         {
             //Aggiorniamo il suo pcb con lo stato attuale e il tempo user trascorso
             updateCurrentProcess(old_state);
-            current_proc->user_time += interrupt_begin_timestamp - getTimeSliceBegin();
-            
             schedule();
         }
         else
         {
-            //Altrimenti riprendi l'esecuzione del processo precedente
+            //Altrimenti riprendi l'esecuzione del processo precedente dopo aver aggiornato 
+            //l'inizio dello user time
+            updateUserTimeBegin();
             LDST(old_state);
         }
     }

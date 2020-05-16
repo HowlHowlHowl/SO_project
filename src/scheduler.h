@@ -13,8 +13,8 @@ void resumeProcess(pcb_t* p);
 pcb_t* suspendCurrentProcess(void);
 pcb_t* getCurrentProcess(void);
 unsigned int getTime(void);
-unsigned int getTimeSliceBegin(void);
-void updateTimeSliceBegin(void);
+unsigned int getUserTimeBegin(void);
+void updateUserTimeBegin(void);
 void schedule(void);
 
 #endif

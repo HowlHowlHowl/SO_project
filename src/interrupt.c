@@ -10,8 +10,8 @@
 #define CMD_ACK 1
 #define TERM_STATUS_MASK 0xFF
 
-//Utilizziamo il puntatore al byte sucessivo come chiave per il semaforo
-//di attesa quando il device e' gia' in uso da un processo
+// Utilizziamo il puntatore al byte sucessivo come chiave per il semaforo
+// di attesa quando il device e' gia' in uso da un processo
 int* getWaitKeyFromDeviceKey(int* key)
 {
     return (int*)(((char*)key) + 1);

@@ -92,7 +92,7 @@ void insertProcQ(struct list_head *head, pcb_t *p)
         pcb_t* it;
         list_for_each_entry(it, head, p_next)
         {
-            if(p->priority >= it->priority)
+            if(p->priority > it->priority)
             {
                 prev = it->p_next.prev;
                 break;
